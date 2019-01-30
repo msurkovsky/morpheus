@@ -1,3 +1,8 @@
+# build files
+build/**/*
+.vscode/**/*
+toys/**/*.ll
+
 # Prerequisites
 *.d
 

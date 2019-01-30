@@ -1,0 +1,2 @@
+
+opt -disable-output -load-pass=/PATH/TO/libPass.so -passes="PASS_NAME" /PATH/TO/file.ll

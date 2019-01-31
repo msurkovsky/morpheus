@@ -1,0 +1,2 @@
+set -x LLVM_ROOT_PATH /mnt/data/sur096/llvm/
+source /home/sur096/projects/morpheus/utils/setup-env

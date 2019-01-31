@@ -1,8 +1,10 @@
 cmake_minimum_required (VERSION 2.8)
 
-# set (USED_LLVM_PATH "/home/sur096/install/llvm7.0.0")
-set (USED_LLVM_PATH "/mnt/data/sur096/llvm")
-set (USED_LLVM_INCLUDES "${USED_LLVM_PATH}/sources/llvm/include")
+# set (USED_LLVM_PATH "/mnt/data/sur096/llvm") # DEBUG VERSION OF LLVM v8.0
+# set (USED_LLVM_INCLUDES "${USED_LLVM_PATH}/sources/llvm/include") # DEBUG VERSION OF LLVM v8.0
+
+set (USED_LLVM_PATH "/home/sur096/install/llvm7.0.0")
+set (USED_LLVM_INCLUDES "${USED_LLVM_PATH}/sources/include")
 set (CMAKE_CXX_COMPILER "${USED_LLVM_PATH}/build/bin/clang++")
 
 set(PROJECT_NAME "Morpheus")

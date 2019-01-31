@@ -1,18 +1,23 @@
 cmake_minimum_required (VERSION 2.8)
 
+# set (USED_LLVM_PATH "/home/sur096/install/llvm7.0.0")
+set (USED_LLVM_PATH "/mnt/data/sur096/llvm")
+set (USED_LLVM_INCLUDES "${USED_LLVM_PATH}/sources/llvm/include")
+set (CMAKE_CXX_COMPILER "${USED_LLVM_PATH}/build/bin/clang++")
+
 set(PROJECT_NAME "Morpheus")
 project (${PROJECT_NAME})
 
-find_package (LLVM CONFIG REQUIRED)
-add_definitions (${LLVM_DEFINITIONS})
-
+set (LLVM_DIR ${USED_LLVM_PATH}/build/cmake/modules/CMakeFiles)
+find_package (LLVM REQUIRED CONFIG)
 message ("LLVM fount at ${LLVM_DIR}")
 
-include_directories (${LLVM_INCLUDE_DIRS})
+add_definitions (${LLVM_DEFINITIONS})
 
-set (CMAKE_CXX_COMPILER "${LLVM_TOOLS_BINARY_DIR}/clang++")
-set (CMAKE_CXX_STANDARD 14)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+message("LLVM incls dirs: ${LLVM_INCLUDE_DIRS}")
+
+# set (CMAKE_CXX_STANDARD 14)
+# set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/libs-bin)

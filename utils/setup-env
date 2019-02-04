@@ -1,0 +1,5 @@
+#!/usr/bin/fish
+
+set -x LLVM_ROOT_PATH /home/sur096/install/llvm7.0.0
+alias clpp="$LLVM_ROOT_PATH/build/bin/clang++"
+alias clopt="$LLVM_ROOT_PATH/build/bin/opt"

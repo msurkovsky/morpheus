@@ -1,10 +1,11 @@
 
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/PassManager.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
-#include "llvm/Support/raw_ostream.h" // TODO: do I need this?
+#include "llvm/Support/raw_ostream.h"
+
+#include "testing_pass.hpp"
 
 using namespace llvm;
 
@@ -16,6 +17,29 @@ namespace {
 
       // errs() << "\t Instrs count: " << M.getInstructionCount() << "\n";
 
+      /* >>> NOTE: How to do it  without inner analysis manager proxy?
+      <<< */
+
+      /* >>> NOTE: The same as ModuleFunctionPassAdaptor below; however under my control
+
+      using MY_FunctionAnalysisManagerModuleProxy = InnerAnalysisManagerProxy<FunctionAnalysisManager, Module>;
+
+      FunctionAnalysisManager &fam = MAM.getResult<MY_FunctionAnalysisManagerModuleProxy>(M).getManager();
+
+      TestingFnPass tfmPass;
+      for(auto &f : M) {
+        tfmPass.run(f, fam);
+      }
+      <<< */
+
+      errs() << "TAG RANK: before\n";
+
+      ModuleToFunctionPassAdaptor<TestingFnPass> adaptor = createModuleToFunctionPassAdaptor(TestingFnPass());
+      adaptor.run(M, MAM);
+
+      errs() << "TAG RANK: after\n";
+
+      /*
       for (auto& f : M.functions()) {
         if (f.hasName()) {
           // errs() << "Function: " << f.getName() << "\n";
@@ -65,6 +89,7 @@ namespace {
           }
         }
       }
+      */
 
       return PreservedAnalyses::all();
     }
@@ -72,6 +97,7 @@ namespace {
 } // end of anonymous namespace
 
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+
 llvmGetPassPluginInfo() {
   return {
     LLVM_PLUGIN_API_VERSION, "TagRankPass", "v0.1", // TODO: expose version

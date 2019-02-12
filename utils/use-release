@@ -1,0 +1,2 @@
+set -x LLVM_ROOT_PATH /home/sur096/install/llvm7.0.0
+source /home/sur096/projects/morpheus/utils/setup-env

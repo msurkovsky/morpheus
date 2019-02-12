@@ -1,5 +1,9 @@
 #!/usr/bin/fish
 
-set -x LLVM_ROOT_PATH /home/sur096/install/llvm7.0.0
+if test -z "$LLVM_ROOT_PATH"
+	echo "LLVM_ROOT_PATH variable needs to be set."
+	exit 1
+end
+
 alias clpp="$LLVM_ROOT_PATH/build/bin/clang++"
 alias clopt="$LLVM_ROOT_PATH/build/bin/opt"

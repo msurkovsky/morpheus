@@ -17,6 +17,15 @@ namespace {
 
       // errs() << "\t Instrs count: " << M.getInstructionCount() << "\n";
 
+      // -----------------------------------------------------------------------
+
+      // NOTE: how to make a pipeline of analysis on the same level
+      // FunctionPassManager fpm;
+      // fpm.addPass(TestingFnPass());
+      // fpm.run(Function &IR, AnalysisManager<Function> &AM)
+
+      // -----------------------------------------------------------------------
+
       /* >>> NOTE: How to do it  without inner analysis manager proxy?
       <<< */
 
@@ -32,6 +41,8 @@ namespace {
       }
       <<< */
 
+      // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
       errs() << "TAG RANK: before\n";
 
       ModuleToFunctionPassAdaptor<TestingFnPass> adaptor = createModuleToFunctionPassAdaptor(TestingFnPass());
@@ -39,6 +50,7 @@ namespace {
 
       errs() << "TAG RANK: after\n";
 
+      // -----------------------------------------------------------------------
       /*
       for (auto& f : M.functions()) {
         if (f.hasName()) {

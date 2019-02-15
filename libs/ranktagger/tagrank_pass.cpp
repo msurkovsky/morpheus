@@ -12,6 +12,7 @@ using namespace llvm;
 namespace {
   struct TagRankPass : public PassInfoMixin<TagRankPass> {
     PreservedAnalyses run (Module &M, ModuleAnalysisManager &MAM) {
+
       // errs() << "Tag Rank Pass runs on module.\n";
       // errs() << "\t Module name: " << M.getName() << "\n";
 
@@ -26,10 +27,30 @@ namespace {
 
       // -----------------------------------------------------------------------
 
-      /* >>> NOTE: How to do it  without inner analysis manager proxy?
-      <<< */
+      /* // >>> Calling pass run directl?
+      TestingFnPass tfn_pass;
+      FunctionAnalysisManager my_fam;
+      for (auto &f : M) {
+        tfn_pass.run(f, my_fam);
+        // auto &res = my_fam.getResult<TestingFnPass>(f);
+        // errs() << "Result: " << res.result << "\n";
+      }
+      // <<< */
 
-      /* >>> NOTE: The same as ModuleFunctionPassAdaptor below; however under my control
+      // -----------------------------------------------------------------------
+
+      /* // >>> Calling pass through FPM?
+      FunctionPassManager fpm;
+      fpm.addPass(TestingFnPass());
+      FunctionAnalysisManager my_fam2;
+      for (auto &f : M) {
+        fpm.run(f, my_fam2);
+      }
+      // <<< */
+
+      // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+      /* // >>> NOTE: The same as ModuleFunctionPassAdaptor below; however under my control
 
       using MY_FunctionAnalysisManagerModuleProxy = InnerAnalysisManagerProxy<FunctionAnalysisManager, Module>;
 
@@ -39,16 +60,33 @@ namespace {
       for(auto &f : M) {
         tfmPass.run(f, fam);
       }
-      <<< */
+      // <<< */
 
       // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
       errs() << "TAG RANK: before\n";
 
+      auto pb_tap = [](){ return TestingAnalysisPass(); };
+
       ModuleToFunctionPassAdaptor<TestingFnPass> adaptor = createModuleToFunctionPassAdaptor(TestingFnPass());
+      FunctionAnalysisManager &fam = MAM.getResult<InnerAnalysisManagerProxy<FunctionAnalysisManager, Module> >(M).getManager();
+      fam.registerPass(pb_tap);
+
       adaptor.run(M, MAM);
 
+      FunctionAnalysisManager fam;
+      fam.registerPass(pb_tap);
+      TestingFnPass tfp;
+      for (auto &f : M) {
+        tfp.run(f, fam);
+
+        // aa.run(f, fam);
+        // auto &res = fam.getResult<AAManager>(f);
+        // errs() << res << "\n";
+      }
+
       errs() << "TAG RANK: after\n";
+      // */
 
       // -----------------------------------------------------------------------
       /*

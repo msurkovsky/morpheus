@@ -1,5 +1,6 @@
 
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -7,27 +8,15 @@
 
 using namespace llvm;
 
+// Provide a definition for the static object used to identify passes.
+AnalysisKey TestingAnalysisPass::Key;
+
 PreservedAnalyses TestingFnPass::run(Function &F, FunctionAnalysisManager &FAM) {
-  errs() << "TFP fn: " << F.getName() << "\n";
+
+  auto &res = FAM.getResult<TestingAnalysisPass>(F);
+
+  errs() << "TFP fn: " << F.getName()
+         << " result: " << res.result
+         << "\n";
   return PreservedAnalyses::all();
 }
-
-extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-
-llvmGetPassPluginInfo() {
-  return {
-    LLVM_PLUGIN_API_VERSION, "TestingFnPass", "v0.1",
-      [](PassBuilder &PB) {
-      PB.registerPipelineParsingCallback(
-        [](StringRef PassName, FunctionPassManager &FPN, ArrayRef<PassBuilder::PipelineElement>) {
-          if (PassName == "testing-fn-pass") {
-            FPN.addPass(TestingFnPass());
-            return true;
-          }
-          return false;
-        }
-      );
-    }
-  };
-}
-

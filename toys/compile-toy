@@ -1,0 +1,8 @@
+#!/usr/bin/fish
+
+if test -z "$LLVM_ROOT_PATH"
+	echo "LLVM_ROOT_PATH variable needs to be set."
+	exit 1
+end
+
+eval $LLVM_ROOT_PATH/build/bin/clang++ -S -emit-llvm -I/usr/include/mpi $argv[1] $argv[2..-1]

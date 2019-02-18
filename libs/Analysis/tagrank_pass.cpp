@@ -2,7 +2,7 @@
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 
-#include "testing_pass.hpp"
+#include "morpheus/Analysis/RankLocalizator.hpp"
 
 using namespace llvm;
 
@@ -12,17 +12,19 @@ namespace {
 
       errs() << "TAG RANK: before\n";
 
-      ModuleToFunctionPassAdaptor<TestingFnPass> adaptor = createModuleToFunctionPassAdaptor(TestingFnPass());
+      // ModuleToFunctionPassAdaptor<TestingFnPass> adaptor = createModuleToFunctionPassAdaptor(TestingFnPass());
 
-      // Register TestingAnalysisPass to the function analysis manager
-      FunctionAnalysisManager &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
-      // pass builder for testing analysis pass
-      auto pb_tap = [](){ return TestingAnalysisPass(); };
-      fam.registerPass(pb_tap);
+      // // Register TestingAnalysisPass to the function analysis manager
+      // FunctionAnalysisManager &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
+      // // pass builder for testing analysis pass
+
+      auto pb_tap = [](){ return RankAnalysis(); };
+      MAM.registerPass(pb_tap);
 
       // Run the module adaptor
-      adaptor.run(M, MAM);
+      // adaptor.run(M, MAM);
 
+      auto &res = MAM.getResult<RankAnalysis>(M);
       errs() << "TAG RANK: after\n";
 
       return PreservedAnalyses::all();

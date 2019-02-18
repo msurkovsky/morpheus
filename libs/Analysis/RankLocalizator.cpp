@@ -5,7 +5,7 @@
 
 using namespace llvm;
 
-RankInfo run(Module &M, ModuleAnalysisManager &AM) {
+RankInfo RankAnalysis::run(Module &M, ModuleAnalysisManager &AM) {
 
   errs() << "Run RankInfo Analysis\n";
   return RankInfo();

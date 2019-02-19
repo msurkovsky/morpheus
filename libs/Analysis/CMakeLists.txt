@@ -1,5 +1,6 @@
 add_library (RankInfoAnalysis MODULE
   RankLocalizator.cpp
+  IsRank.cpp
   tagrank_pass.cpp
   )
 

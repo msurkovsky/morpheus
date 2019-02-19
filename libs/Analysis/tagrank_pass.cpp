@@ -8,23 +8,25 @@ using namespace llvm;
 
 namespace {
   struct TagRankPass : public PassInfoMixin<TagRankPass> {
-    PreservedAnalyses run (Module &M, ModuleAnalysisManager &MAM) {
+    PreservedAnalyses run (Module &m, ModuleAnalysisManager &am) {
 
       errs() << "TAG RANK: before\n";
 
-      // ModuleToFunctionPassAdaptor<TestingFnPass> adaptor = createModuleToFunctionPassAdaptor(TestingFnPass());
 
       // // Register TestingAnalysisPass to the function analysis manager
       // FunctionAnalysisManager &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
-      // // pass builder for testing analysis pass
-
+      // pass builder for testing analysis pass
       auto pb_tap = [](){ return RankAnalysis(); };
-      MAM.registerPass(pb_tap);
+      am.registerPass(pb_tap);
 
       // Run the module adaptor
       // adaptor.run(M, MAM);
 
-      auto &res = MAM.getResult<RankAnalysis>(M);
+      // ModuleToFunctionPassAdaptor<RankAnalysis> adaptor = createModuleToFunctionPassAdaptor(RankAnalysis());
+      // for (auto &f : M) {
+      //   auto &res = fam.getResult<RankAnalysis>(f);
+      // }
+      auto &res = am.getResult<RankAnalysis>(m);
       errs() << "TAG RANK: after\n";
 
       return PreservedAnalyses::all();

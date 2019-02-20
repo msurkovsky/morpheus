@@ -9,7 +9,7 @@
 namespace llvm {
 
   template <typename IRUnitT, StringRef callee_name>
-  class CallFinder {
+  class CallFinder { // TODO: place it into other place -> maybe 'utils'.
     class CallVisitor;
 
   public:
@@ -34,19 +34,14 @@ namespace llvm {
         }
       }
     };
-  };
+  }; // end TODO: replacing
 
-  template<> MPICallFinder<typename IRUnitT, "MPI_Init"> MPIInitFinder;
-  template<> MPICallVistor<typename IRUnitT, "MPI_Finalize"> MPIFinializeFinder;
+  template<> CallFinder<typename IRUnitT, "MPI_Init"> MPIInitFinder;
+  template<> CallVistor<typename IRUnitT, "MPI_Finalize"> MPIFinializeFinder;
 
-
-  // TODO: what's the result??
-
-  // NOTE: I want to have a module analysis that go through functions and tell me whether or not the function contains
-  // MPI call, either Init or Finalize
-  class Function? : AnalysisInfoMixin<Function?> {
+  class MPIScopeAnalysis : AnalysisInfoMixin<MPIScopeAnalysis> {
     AnalysisKey Key;
-    firend AnalysisInfoMixin<Function?>;
+    firend AnalysisInfoMixin<MPIScopeAnalysis>;
 
   public:
 

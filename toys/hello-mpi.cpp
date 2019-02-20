@@ -6,6 +6,10 @@
 
 std::string print_rank(int rank);
 
+void ff () {
+  MPI_Finalize();
+}
+
 int main (int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 
@@ -19,7 +23,7 @@ int main (int argc, char *argv[]) {
     std::cout << "Doing sth. special..." << std::endl;
   }
 
-  MPI_Finalize();
+  ff();
   return 0;
 }
 

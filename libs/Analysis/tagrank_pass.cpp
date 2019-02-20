@@ -2,7 +2,7 @@
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 
-#include "morpheus/Analysis/RankLocalizator.hpp"
+#include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
 using namespace llvm;
 
@@ -16,7 +16,7 @@ namespace {
       // // Register TestingAnalysisPass to the function analysis manager
       // FunctionAnalysisManager &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
       // pass builder for testing analysis pass
-      auto pb_tap = [](){ return RankAnalysis(); };
+      auto pb_tap = [](){ return MPIScopeAnalysis(); };
       am.registerPass(pb_tap);
 
       // Run the module adaptor
@@ -26,7 +26,7 @@ namespace {
       // for (auto &f : M) {
       //   auto &res = fam.getResult<RankAnalysis>(f);
       // }
-      auto &res = am.getResult<RankAnalysis>(m);
+      auto &res = am.getResult<MPIScopeAnalysis>(m);
       errs() << "TAG RANK: after\n";
 
       return PreservedAnalyses::all();

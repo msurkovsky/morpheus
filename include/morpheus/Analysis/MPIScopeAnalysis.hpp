@@ -6,57 +6,29 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ADT/StringRef.h"
 #include "llvm/IR/PassManager.h"
-#include "llvm/IR/InstVisitor.h"
 
 #include <vector>
 #include <string>
 
 namespace llvm {
 
-  template <typename IRUnitT>
-  class CallFinder { // >>> TODO: place it into other place -> maybe 'utils'; (?) private or public API?
-
-    struct CallVisitor;
-
-  public:
-    std::vector<CallInst*> find_in(const std::string &callee_name, IRUnitT &unit) {
-      CallVisitor cv(callee_name);
-      cv.visit(unit);
-      return cv.found_insts;
-    }
-
-  private:
-    std::string callee_name;
-
-    struct CallVisitor : public InstVisitor<CallVisitor> {
-
-      std::string callee_name;
-
-      CallVisitor(const std::string &callee_name) : callee_name(callee_name) { }
-      // a list of call instructions
-      std::vector<CallInst*> found_insts;
-
-      // define visitor function that filters the instructions according to the callee's name
-      void visitCallInst(CallInst &inst) {
-        Function *called_fn = inst.getCalledFunction();
-        if (auto *called_fn = inst.getCalledFunction()) {
-          if (called_fn->getName() == callee_name) {
-            found_insts.push_back(&inst);
-          }
-        }
-      }
-    };
-  }; // <<< end TODO
-
-
   class MPIScopeAnalysis;
 
-  struct MPIScopeResult {
+  struct MPIScopeResult { // TODO: make the data private
     Function *scope; // it has to be a function ("worst case" is main)
-    CallInst *start;
+    CallInst *start; // Q?: This is a pointer on call that may be either
+                     //     an MPI_Init call or another mediately calling MPI_Init.
+                     //     The Question is how to cope with it? ... Or what to expect
     CallInst *end;
+
+    CallInst *init;
+    CallInst *finalize;
+
+    // NOTE:
+    // Well, in the end I need a kind of navigation trough the scope. Therefore, a set of queries needs to be defined.
+
+    // TODO: define it as an iterator over "unfolded" scope
   };
 
   class MPIScopeAnalysis : public AnalysisInfoMixin<MPIScopeAnalysis> { // both -*-module-*- and function analysis

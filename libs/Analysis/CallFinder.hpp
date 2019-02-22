@@ -9,6 +9,8 @@ template <typename IRUnitT>
 class CallFinder {
 
 public:
+  CallFinder() = delete;
+
   static std::vector<CallInst*> find_in(StringRef call_name, IRUnitT &unit) {
     CallVisitor cv(call_name);
     cv.visit(unit);

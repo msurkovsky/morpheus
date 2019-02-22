@@ -1,19 +1,23 @@
 
+#include "CallFinder.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
+
 #include "llvm/Support/raw_ostream.h"
+
 #include <cassert>
 
 using namespace llvm;
+using namespace std;
 
 namespace {
   template<typename IRUnitT>
-  CallInst* find_call_in_by_name(const std::string &call_name, IRUnitT &unit) { // TODO: move into utils along with CallFinder
-    CallFinder<Function> mpi_call_f;
-    std::vector<CallInst*> mpi_calls = mpi_call_f.find_in(call_name, unit);
-    assert(mpi_calls.size() <= 1); // There can be at most one MPI_Init/Finalize call
-
-    if (!mpi_calls.empty()) {
-      return mpi_calls.front();
+  CallInst* find_call_in_by_name(const string &name, IRUnitT &unit) {
+    vector<CallInst*> found_calls = CallFinder<IRUnitT>::find_in(name, unit);
+    // it is used to find MPI_Init and MPI_Finalize calls,
+    // these cannot be called more than once.
+    assert (found_calls.size() <= 1);
+    if (found_calls.size() > 0) {
+      return found_calls.front();
     }
     return nullptr;
   }

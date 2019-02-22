@@ -26,10 +26,36 @@ namespace {
       // for (auto &f : M) {
       //   auto &res = fam.getResult<RankAnalysis>(f);
       // }
+
+      // TODO: this does not work!
+      auto mpm = ModulePassManager();
+      mpm.run(m, am);
+
       auto &res = am.getResult<MPIScopeAnalysis>(m);
-      errs() << "Scope: " << res.scope->getName() << "\n";
-      errs() << "begin: " << res.start->getCalledFunction()->getName() << "\n";
-      errs() << "end: " << res.end->getCalledFunction()->getName() << "\n";
+
+      // NOTE: it seems that at this point the results are not available yet ??
+      auto it = res.begin();
+      it++;
+      auto it2 = res.end();
+      errs() << "begin == end: " << (it == it2) << "\n";
+
+
+      for (auto &inst : res) {
+        errs() << "INST: " << inst << "\n";
+        // if (&inst) {
+        //   errs() << "INST: " << inst.getValueID() << "\n";
+        //   errs() << "\t >>> " << inst << "\n";
+        // } else {
+        //   errs() << "AAA\n";
+        // }
+      }
+
+      // auto it = res.begin();
+      // errs() << "IT: " << *it << "\n";
+      // errs() << "Is scope valid: " << (res.isValid() ? "YES" : "NO") << "\n";
+      // errs() << "Scope: " << res.scope->getName() << "\n";
+      // errs() << "begin: " << res.start->getCalledFunction()->getName() << "\n";
+      // errs() << "end: " << res.end->getCalledFunction()->getName() << "\n";
 
 
       errs() << "TAG RANK: after\n";

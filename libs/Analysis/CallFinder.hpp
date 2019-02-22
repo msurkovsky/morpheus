@@ -24,13 +24,13 @@ private:
     StringRef callee_name;
 
     // a list of call instructions
-    std::vector<CallInst*> found_insts;
+    std::vector<CallInst*> found_insts; // TODO: is it safe to store the pointer here?
 
     CallVisitor(StringRef callee_name) : callee_name(callee_name) { }
 
     // define visitor function that filters the instructions according to the callee's name
     void visitCallInst(CallInst &inst) {
-      Function *called_fn = inst.getCalledFunction();
+      Function *called_fn = inst.getCalledFunction(); // TODO: remove this line
       if (auto *called_fn = inst.getCalledFunction()) {
         if (called_fn->getName() == callee_name) {
           found_insts.push_back(&inst);

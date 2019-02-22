@@ -25,7 +25,7 @@ namespace {
     return nullptr;
   }
 
-  // TODO: new interface should look like:
+  // TODO: new interface should look like: (4.3.19: does it?)
   /*
     MPIInit_Call find_mpi_init(IRUnitT &unit); // this function can internally call "find_call_in_by_name" ...
    */
@@ -37,17 +37,17 @@ namespace {
 MPIScopeAnalysis::Result
 MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
 
-  MPIScopeResult result; // based on partial results I should fill the overall one.
-
   string init_f_name = "MPI_Init";
   string finalize_f_name = "MPI_Finalize";
 
   // ... it should be enough to have a parent for each call
 
-  CallInst *mpi_init, *mpi_finalize;
+  // pair<CallInst *, CallInst *> caller_callee; // NOTE: to have an info who and where the callee was called
+
+  CallInst *mpi_init, *mpi_finalize; // The exact calls of MPI_Init/Finalize calls
   CallInst *init_f, *finalize_f;
 
-  while (true) {
+  do {
     for (auto &f : m) {
       init_f = find_call_in_by_name(init_f_name, f);
       finalize_f = find_call_in_by_name(finalize_f_name, f);
@@ -65,42 +65,24 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
 
       // Looking for calls within one function that define the mpi scope
       if (init_f && finalize_f) {
-        result.scope = &f;
-        result.start = init_f;
-        result.end = finalize_f;
-        result.init = mpi_init;
-        result.finalize = mpi_finalize;
-        break; // skip other search; it's ok (because only one MPI_Init/Finalize can be presented)
+        return Result(&f, init_f, finalize_f, mpi_init, mpi_finalize);
       }
 
+      // If neither init_f nor finalize_f happened,
+      // then either 'init_f' or 'finalize_f' might happened.
       if (init_f) {
         StringRef f_name = f.getName();
-        assert(!f_name.empty()); // called function has to have a name (actually it is not true but for now)
+        assert(!f_name.empty()); // NOTE: called function has to have a name (actually it is not true but for now)
         init_f_name = f_name;
-        continue; // finalize_f is definitely nullptr now, hence continue from here
-      }
-
-      if (finalize_f) {
+      } else if (finalize_f) {
         StringRef f_name = f.getName();
         assert(!f_name.empty());
         finalize_f_name = f_name;
       }
     } // end for
+  } while(init_f || finalize_f); // continue search if at least one of the init/finalize call has been found.
 
-    if (init_f && finalize_f) {
-      // I found the scope
-      break;
-    }
-
-    // At this point I went through all the possible functions in module
-    // and did not find valid scope.
-    if (!init_f && !finalize_f) {
-      // MPI is not involved at all
-      break;
-    }
-  }
-
-  return result;
+  return Result(); // return empty scope; MPI is not involved at all within the module
 }
 
 // provide definition of the analysis Key

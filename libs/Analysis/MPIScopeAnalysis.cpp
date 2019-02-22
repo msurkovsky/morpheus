@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <string>
+#incluce <utility>
 
 using namespace llvm;
 using namespace std;
@@ -44,6 +45,7 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
 
   // ... it should be enough to have a parent for each call
 
+  std::pair<CallInst *, CallInst *> caller_callee; // NOTE: to have an info who and where the callee was called
   CallInst *mpi_init, *mpi_finalize;
   CallInst *init_f, *finalize_f;
 

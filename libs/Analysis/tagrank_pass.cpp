@@ -27,9 +27,10 @@ namespace {
       //   auto &res = fam.getResult<RankAnalysis>(f);
       // }
       auto &res = am.getResult<MPIScopeAnalysis>(m);
-      errs() << "Scope: " << res.scope->getName() << "\n";
-      errs() << "begin: " << res.start->getCalledFunction()->getName() << "\n";
-      errs() << "end: " << res.end->getCalledFunction()->getName() << "\n";
+      errs() << "Is scope valid: " << (res.isValid() ? "YES" : "NO") << "\n";
+      // errs() << "Scope: " << res.scope->getName() << "\n";
+      // errs() << "begin: " << res.start->getCalledFunction()->getName() << "\n";
+      // errs() << "end: " << res.end->getCalledFunction()->getName() << "\n";
 
 
       errs() << "TAG RANK: after\n";

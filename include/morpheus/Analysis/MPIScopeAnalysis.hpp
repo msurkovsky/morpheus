@@ -35,9 +35,22 @@ namespace llvm {
 
     bool isValid() {
       // Instruction *test_i = init_call->next();
+      // auto node = init_call->getNextNode();
+      errs() << "\n\tInit call instr: " << *init_call << "\n";
+
+      errs() << "\tisa<Inst>: " << isa<Instruction>(init_call) << "\n";
+      // ---------------->>>
+      auto next = init_call->getNextNode(); // TODO: It seems that getNextNode is the right instruction I'm looking for!!
+      errs() << "\tNext: " << *next << "\n";
+      // ----------------<<<
+
       auto *bb = init_call->getParent();
+      // const auto &list = bb->*(BasicBlock::getSublistAccess((Instruction *) nullptr));
+      const auto &list = bb->*(BasicBlock::getSublistAccess(init_call));
+      // auto next2 = list.getNextNode(init_call);
+      // errs() << "\tNxtC: " << *next2 << "\n";
       auto it = bb->begin();
-      errs() << "Iterator: " << *it << "\n";
+      errs() << "\tIterator: " << *it << "\n";
       // auto &it = init_call->iterator;
       return scope != nullptr;
     }

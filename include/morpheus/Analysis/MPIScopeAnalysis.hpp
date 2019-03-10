@@ -46,11 +46,22 @@ namespace llvm {
 
       auto *bb = init_call->getParent();
       // const auto &list = bb->*(BasicBlock::getSublistAccess((Instruction *) nullptr));
-      const auto &list = bb->*(BasicBlock::getSublistAccess(init_call));
+      // const auto &list = bb->*(BasicBlock::getSublistAccess(init_call));
+
+
+      // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      auto it2 =  init_call->getIterator(); // this is the solution I want to use!
+      // vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+      // NOTE: the `end` is either nullptr or finalize_call
+
+
       // auto next2 = list.getNextNode(init_call);
       // errs() << "\tNxtC: " << *next2 << "\n";
       auto it = bb->begin();
       errs() << "\tIterator: " << *it << "\n";
+      errs() << "\tIt2:     " << *it2 << "\n";
+      auto next2 = std::next(it2);
+      errs() << "\tIt next2: " << *next2 << "\n";
       // auto &it = init_call->iterator;
       return scope != nullptr;
     }

@@ -16,7 +16,7 @@
 namespace llvm {
 
   class ScopeIterator
-    : public std::iterator<std::forward_iterator_tag, Instruction *> { // TODO: the iterator has to be self contained
+    : public std::iterator<std::forward_iterator_tag, Instruction> { // TODO: the iterator has to be self contained
     // Note: I "cannot use" defined iterators, just because I'm going throw
     // more Basicblocks. In fact, I'm writing something like flat iterator.
 
@@ -25,32 +25,79 @@ namespace llvm {
     SymbolTableList<Instruction>::iterator current;
 
   public:
+    ScopeIterator() : begin_inst(nullptr), end_inst(nullptr) { }
+
     explicit ScopeIterator(Instruction *begin, Instruction *end)
       : current(begin->getIterator()), begin_inst(begin), end_inst(end) { }
 
+    ScopeIterator(const ScopeIterator &sci) = default;
+
+    ScopeIterator& operator=(const ScopeIterator& sci) = default;
+
     ScopeIterator begin() {
-      current = begin_inst->getIterator();
+      if (begin_inst) {
+        current = begin_inst->getIterator();
+      }
       return *this;
     }
 
     ScopeIterator end() {
-      current = end_inst->getIterator();
+      if (end_inst) {
+        current = end_inst->getIterator();
+      }
       return *this;
     }
 
     ScopeIterator& operator++() {
-      //
+      current = std::next(current);
+      auto *terminator = current->getParent()->getTerminator();
+      if (&*current == terminator) {
+        auto *p = current->getParent();
+        auto *node = p->getNextNode();
+        errs() << "Parent: " << p << "\n";
+        errs() << "Node: " << node << "\n";
+
+        if (!p || !node) { // TODO: is it possible to have nullptr parent?
+          errs() << ">>>error<<< " << p << " -- " << node << "\n";
+          ScopeIterator end_it = end();
+          return end_it;
+        }
+        current = node->begin();
+        errs() << "Curent: " << *current << "\n";
+        // errs() << "Parrent: " << *current << "\n";
+        // ScopeIterator end_it = end();
+        // return end_it;
+        // then go up and continue from there.
+        errs() << "\n";
+      }
+      return *this;
     }
 
     ScopeIterator operator++(int) {
-      current = std::next(current);
-      if (/*current is end of the block*/ true) {
-        // then go up and continue there.
-      }
-
-      return *this;
+      ScopeIterator tmp = *this;
+      ++*this;
+      return tmp;
     }
-  };
+
+    Instruction& operator*() const {
+      return *current;
+    }
+
+    Instruction* operator->() const {
+      return &operator*();
+    }
+
+    bool operator==(const ScopeIterator &other) const {
+      return (begin_inst == other.begin_inst &&
+              end_inst == other.end_inst &&
+              current == other.current);
+    }
+
+    bool operator!=(const ScopeIterator &other) const {
+      return !operator==(other);
+    }
+  }; // end of ScopeIterator
+
 
   class MPIScopeAnalysis;
 
@@ -63,10 +110,10 @@ namespace llvm {
 
     CallInst *init_call;     // call of MPI_Init
     CallInst *finalize_call; // call of MPI_Finalize
+    ScopeIterator iter;
 
   public:
-    using iterator = SymbolTableList<Instruction>::iterator;
-    // using iterator = Instruction::iterator;
+    using iterator = ScopeIterator;
 
     MPIScopeResult() : scope(nullptr), start_f(nullptr), end_f(nullptr),
                        init_call(nullptr), finalize_call(nullptr) { };
@@ -74,18 +121,16 @@ namespace llvm {
     MPIScopeResult(Function *scope, CallInst *start_f, CallInst *end_f,
                    CallInst* init_call, CallInst *finalize_call)
       : scope(scope), start_f(start_f), end_f(end_f),
-        init_call(init_call), finalize_call(finalize_call) { }
+        init_call(init_call), finalize_call(finalize_call),
+        iter(ScopeIterator(init_call, finalize_call)) { }
 
+    MPIScopeResult(const MPIScopeResult &sci) = default;
 
-    iterator begin() {
-      return init_call->getIterator();
-    }
-
-    iterator end() {
-      return finalize_call->getIterator();
-    }
+    ScopeIterator begin() { return iter.begin(); }
+    ScopeIterator end()   { return iter.end(); }
 
     bool isValid() {
+      return scope != nullptr;
       // Instruction *test_i = init_call->next();
       // auto node = init_call->getNextNode();
       errs() << "\n\tInit call instr: " << *init_call << "\n";

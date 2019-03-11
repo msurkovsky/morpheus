@@ -27,15 +27,20 @@ namespace {
       //   auto &res = fam.getResult<RankAnalysis>(f);
       // }
       auto &res = am.getResult<MPIScopeAnalysis>(m);
-      for (auto &inst : res) {
-        errs() << "INST: " << inst.getValueID() << "\n";
-        // if (&inst) {
-        //   errs() << "INST: " << inst.getValueID() << "\n";
-        //   errs() << "\t >>> " << inst << "\n";
-        // } else {
-        //   errs() << "AAA\n";
-        // }
-      }
+
+      // auto it = res.begin();
+      // it = (++(++(++(++(++(++(++it)))))));
+      // errs() << "INST: " << it->isTerminator() << "\n";
+
+      // for (auto &inst : res) {
+      //   errs() << "INST: " << inst.getValueID() << "\n";
+      //   // if (&inst) {
+      //   //   errs() << "INST: " << inst.getValueID() << "\n";
+      //   //   errs() << "\t >>> " << inst << "\n";
+      //   // } else {
+      //   //   errs() << "AAA\n";
+      //   // }
+      // }
 
       // auto it = res.begin();
       // errs() << "IT: " << *it << "\n";

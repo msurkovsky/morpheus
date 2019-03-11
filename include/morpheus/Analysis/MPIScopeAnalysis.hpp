@@ -45,21 +45,22 @@ namespace llvm {
       : begin_inst(begin), end_inst(end),
         iter(iterator(Sentinel)) { }
 
-    explict ScopeIterator(const ScopeIterator &sci) = default;
+    ScopeIterator(const ScopeIterator &sci) = default;
+
     ScopeIterator& operator=(const ScopeIterator& sci) = default;
 
     ScopeIterator begin() {
       iter = iterator(begin_inst);
-      return ScopeIterator(*this);
-      // return *this;
+      return *this;
     }
 
-    // ScopeIterator end() {
-    //   iter = iterator(end_inst);
-    //   return *this;
-    // }
+    ScopeIterator end() {
+      iter = iterator(end_inst);
+      return *this;
+    }
 
     // ScopeIterator& operator++() {
+    // >>> TODO: isEnd is possible to check on the interator <<<<
     //   current = std::next(current);
     //   auto *terminator = current->getParent()->getTerminator();
     //   if (&*current == terminator) {
@@ -90,22 +91,23 @@ namespace llvm {
     //   return tmp;
     // }
 
-    // Instruction& operator*() const {
-    //   return *current;
-    // }
+    Instruction& operator*() const {
+      return *iter;
+    }
 
-    // Instruction* operator->() const {
-    //   return &operator*();
-    // }
+    Instruction* operator->() const {
+      return &operator*();
+    }
 
     bool operator==(const ScopeIterator &other) const {
       return (begin_inst == other.begin_inst &&
-              end_inst == other.end_inst);
+              end_inst == other.end_inst &&
+              &*iter == &*(other.iter));
     }
 
-    // bool operator!=(const ScopeIterator &other) const {
-    //   return !operator==(other);
-    // }
+    bool operator!=(const ScopeIterator &other) const {
+      return !operator==(other);
+    }
   }; // end of ScopeIterator
 
 
@@ -134,10 +136,11 @@ namespace llvm {
 
     MPIScopeResult(const MPIScopeResult &sci) = default;
 
-    // ScopeIterator begin() {
-    //   ScopeIterator sc(init_call, finalize_call);
-    //   return sc.begin();
-    // }
+    ScopeIterator begin() {
+      ScopeIterator sc(init_call, finalize_call);
+      return ScopeIterator(init_call, finalize_call).begin();
+      // return sc.begin();
+    }
 
     // ScopeIterator end()   {
     //   ScopeIterator sc(init_call, finalize_call);

@@ -28,9 +28,9 @@ namespace {
       // }
       auto &res = am.getResult<MPIScopeAnalysis>(m);
 
-      // auto it = res.begin();
+      auto it = res.begin();
       // it = (++(++(++(++(++(++(++it)))))));
-      // errs() << "INST: " << it->isTerminator() << "\n";
+      errs() << "INST: " << *it << "\n";
 
       // for (auto &inst : res) {
       //   errs() << "INST: " << inst.getValueID() << "\n";

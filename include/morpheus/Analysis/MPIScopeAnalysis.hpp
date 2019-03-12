@@ -51,7 +51,6 @@ namespace llvm {
     ScopeIterator& operator=(const ScopeIterator& sci) = default;
 
     ScopeIterator begin() {
-      // TODO: this causes an error with ilist_sentinel_tracking<true> set
       iter = iterator(begin_inst);
       return *this;
     }
@@ -147,15 +146,12 @@ namespace llvm {
     MPIScopeResult(const MPIScopeResult &sci) = default;
 
     ScopeIterator begin() {
-      ScopeIterator sc(init_call, finalize_call);
       return ScopeIterator(init_call, finalize_call).begin();
-      // return sc.begin();
     }
 
-    // ScopeIterator end()   {
-    //   ScopeIterator sc(init_call, finalize_call);
-    //   return sc.end();
-    // }
+    ScopeIterator end()   {
+      return ScopeIterator(init_call, finalize_call).end();
+    }
 
     // ScopeIterator::const_iterator begin() const { iter.begin(); }
     // ScopeIterator::const_iterator end() const { iter.end(); }

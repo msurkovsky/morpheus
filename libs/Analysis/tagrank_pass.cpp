@@ -26,21 +26,29 @@ namespace {
       // for (auto &f : M) {
       //   auto &res = fam.getResult<RankAnalysis>(f);
       // }
+
+      // TODO: this does not work!
+      auto mpm = ModulePassManager();
+      mpm.run(m, am);
+
       auto &res = am.getResult<MPIScopeAnalysis>(m);
 
+      // NOTE: it seems that at this point the results are not available yet ??
       auto it = res.begin();
-      it = (++(++(++(++(++(++(++(++(++(++it))))))))));
-      errs() << "INST: " << *it << "\n";
+      it++;
+      auto it2 = res.end();
+      errs() << "begin == end: " << (it == it2) << "\n";
 
-      // for (auto &inst : res) {
-      //   errs() << "INST: " << inst.getValueID() << "\n";
-      //   // if (&inst) {
-      //   //   errs() << "INST: " << inst.getValueID() << "\n";
-      //   //   errs() << "\t >>> " << inst << "\n";
-      //   // } else {
-      //   //   errs() << "AAA\n";
-      //   // }
-      // }
+
+      for (auto &inst : res) {
+        errs() << "INST: " << inst << "\n";
+        // if (&inst) {
+        //   errs() << "INST: " << inst.getValueID() << "\n";
+        //   errs() << "\t >>> " << inst << "\n";
+        // } else {
+        //   errs() << "AAA\n";
+        // }
+      }
 
       // auto it = res.begin();
       // errs() << "IT: " << *it << "\n";

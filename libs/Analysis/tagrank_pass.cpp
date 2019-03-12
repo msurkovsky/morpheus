@@ -29,7 +29,7 @@ namespace {
       auto &res = am.getResult<MPIScopeAnalysis>(m);
 
       auto it = res.begin();
-      // it = (++(++(++(++(++(++(++it)))))));
+      it = (++(++(++(++(++(++(++(++(++(++it))))))))));
       errs() << "INST: " << *it << "\n";
 
       // for (auto &inst : res) {

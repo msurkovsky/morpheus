@@ -9,6 +9,7 @@
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/SymbolTableListTraits.h"
 #include "llvm/ADT/ilist_iterator.h"
+#include "llvm/ADT/simple_ilist.h"
 
 #include <vector>
 #include <string>
@@ -50,6 +51,7 @@ namespace llvm {
     ScopeIterator& operator=(const ScopeIterator& sci) = default;
 
     ScopeIterator begin() {
+      // TODO: this causes an error with ilist_sentinel_tracking<true> set
       iter = iterator(begin_inst);
       return *this;
     }
@@ -59,37 +61,45 @@ namespace llvm {
       return *this;
     }
 
-    // ScopeIterator& operator++() {
-    // >>> TODO: isEnd is possible to check on the interator <<<<
-    //   current = std::next(current);
-    //   auto *terminator = current->getParent()->getTerminator();
-    //   if (&*current == terminator) {
-    //     auto *p = current->getParent();
-    //     auto *node = p->getNextNode();
-    //     errs() << "Parent: " << p << "\n";
-    //     errs() << "Node: " << node << "\n";
+    ScopeIterator& operator++() {
+      BasicBlock *parent_bb = (*iter).getParent();
+      Instruction *term_inst = parent_bb->getTerminator();
+      if (&*iter != term_inst) {
+        iter++;
+      } else {
+        BasicBlock *next_bb = parent_bb->getNextNode();
+        iter = next_bb->begin();
+      }
+      return *this;
 
-    //     if (!p || !node) { // TODO: is it possible to have nullptr parent?
-    //       errs() << ">>>error<<< " << p << " -- " << node << "\n";
-    //       ScopeIterator end_it = end();
-    //       return end_it;
-    //     }
-    //     current = node->begin();
-    //     errs() << "Curent: " << *current << "\n";
-    //     // errs() << "Parrent: " << *current << "\n";
-    //     // ScopeIterator end_it = end();
-    //     // return end_it;
-    //     // then go up and continue from there.
-    //     errs() << "\n";
-    //   }
-    //   return *this;
-    // }
+      // auto *terminator = current->getParent()->getTerminator();
+      // if (&*current == terminator) {
+      //   auto *p = current->getParent();
+      //   auto *node = p->getNextNode();
+      //   errs() << "Parent: " << p << "\n";
+      //   errs() << "Node: " << node << "\n";
 
-    // ScopeIterator operator++(int) {
-    //   ScopeIterator tmp = *this;
-    //   ++*this;
-    //   return tmp;
-    // }
+      //   if (!p || !node) { // TODO: is it possible to have nullptr parent?
+      //     errs() << ">>>error<<< " << p << " -- " << node << "\n";
+      //     ScopeIterator end_it = end();
+      //     return end_it;
+      //   }
+      //   current = node->begin();
+      //   errs() << "Curent: " << *current << "\n";
+      //   // errs() << "Parrent: " << *current << "\n";
+      //   // ScopeIterator end_it = end();
+      //   // return end_it;
+      //   // then go up and continue from there.
+      //   errs() << "\n";
+      // }
+      // return *this;
+    }
+
+    ScopeIterator operator++(int) {
+      ScopeIterator tmp = *this;
+      ++*this;
+      return tmp;
+    }
 
     Instruction& operator*() const {
       return *iter;

@@ -2,6 +2,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/InstVisitor.h"
 #include <vector>
+#include <functional>
 
 using namespace llvm;
 
@@ -11,8 +12,11 @@ class CallFinder {
 public:
   CallFinder() = delete;
 
-  static std::vector<CallInst*> find_in(StringRef call_name, IRUnitT &unit) {
-    CallVisitor cv(call_name);
+  static std::vector<CallInst*> find_in(
+      IRUnitT &unit,
+      std::function<bool(const CallInst&)> filter=[](const CallInst&) { return true; }) {
+
+    CallVisitor cv(filter);
     cv.visit(unit);
     return cv.found_insts;
   }
@@ -21,20 +25,17 @@ private:
   struct CallVisitor : public InstVisitor<CallVisitor> {
 
     // a name of call we are searching for
-    StringRef callee_name;
+    std::function<bool(const CallInst&)> filter;
 
     // a list of call instructions
     std::vector<CallInst*> found_insts; // TODO: is it safe to store the pointer here?
 
-    CallVisitor(StringRef callee_name) : callee_name(callee_name) { }
+    CallVisitor(std::function<bool(const CallInst&)> filter) : filter(filter) { }
 
     // define visitor function that filters the instructions according to the callee's name
     void visitCallInst(CallInst &inst) {
-      Function *called_fn = inst.getCalledFunction(); // TODO: remove this line
-      if (auto *called_fn = inst.getCalledFunction()) {
-        if (called_fn->getName() == callee_name) {
-          found_insts.push_back(&inst);
-        }
+      if (filter(inst)) {
+        found_insts.push_back(&inst);
       }
     }
   };

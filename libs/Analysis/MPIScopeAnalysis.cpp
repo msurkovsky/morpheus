@@ -45,8 +45,37 @@ namespace {
 MPIScopeAnalysis::Result
 MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
 
+  string main_f_name = "main";
+
+  // Find the main function
+  Function *main_unit = nullptr;
+  for (auto &f : m) {
+    if (f.hasName() && f.getName() == "main") {
+      main_unit = &f;
+      break;
+    }
+  }
+
+  if (!main_unit) {
+    return MPIScopeResult(); // empty (invalid) scope result
+  }
+
+  vector<CallInst*> main = CallFinder<Function>::find_in(*main_unit);
+  errs() << "Num of calls: " << main.size() << "\n";
+  int i = 1;
+  for (CallInst *inst : main) {
+    if (auto *called_fn = inst->getCalledFunction()) {
+      errs() << i << ": " << called_fn->getName() << "\n";
+    }
+    i++;
+  }
+
+  return MPIScopeResult();
+
+  /*
   string init_f_name = "MPI_Init";
   string finalize_f_name = "MPI_Finalize";
+
 
   // ... it should be enough to have a parent for each call
 
@@ -91,6 +120,7 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
   } while(init_f || finalize_f); // continue search if at least one of the init/finalize call has been found.
 
   return Result(); // return empty scope; MPI is not involved at all within the module
+  */
 }
 
 // provide definition of the analysis Key

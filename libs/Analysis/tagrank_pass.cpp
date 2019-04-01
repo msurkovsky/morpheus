@@ -29,11 +29,13 @@ namespace {
 
       auto &res = am.getResult<MPIScopeAnalysis>(m);
 
+      /* commented: (1.4.2019)
       // NOTE: it seems that at this point the results are not available yet ??
       auto it = res.begin();
       it++;
       auto it2 = res.end();
       errs() << "begin == end: " << (it == it2) << "\n";
+      */
 
 
       for (auto &inst : res) {

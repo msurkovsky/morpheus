@@ -27,10 +27,6 @@ namespace {
       //   auto &res = fam.getResult<RankAnalysis>(f);
       // }
 
-      // TODO: this does not work!
-      auto mpm = ModulePassManager();
-      mpm.run(m, am);
-
       auto &res = am.getResult<MPIScopeAnalysis>(m);
 
       // NOTE: it seems that at this point the results are not available yet ??

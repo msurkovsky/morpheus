@@ -15,7 +15,15 @@ using namespace std;
 namespace {
   template<typename IRUnitT>
   CallInst* find_call_in_by_name(const string &name, IRUnitT &unit) {
-    vector<CallInst*> found_calls = CallFinder<IRUnitT>::find_in(name, unit);
+    auto filter = [name](const CallInst &inst) {
+      if (auto *called_fn = inst.getCalledFunction()) {
+        if (called_fn->getName() == name) {
+          return true;
+        }
+      }
+      return false;
+    };
+    vector<CallInst*> found_calls = CallFinder<IRUnitT>::find_in(unit, filter);
     // it is used to find MPI_Init and MPI_Finalize calls,
     // these cannot be called more than once.
     assert (found_calls.size() <= 1);

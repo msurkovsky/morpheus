@@ -8,6 +8,7 @@
 
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/SymbolTableListTraits.h"
+#include "llvm/IR/ValueMap.h"
 #include "llvm/ADT/ilist_iterator.h"
 #include "llvm/ADT/simple_ilist.h"
 

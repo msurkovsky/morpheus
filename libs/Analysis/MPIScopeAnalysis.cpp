@@ -6,6 +6,7 @@
 
 #include <cassert>
 #include <string>
+#include <map>
 
 using namespace llvm;
 using namespace std;
@@ -23,7 +24,7 @@ namespace {
       }
       return false;
     };
-    vector<CallInst*> found_calls = CallFinder<IRUnitT>::find_in(unit, filter);
+    vector<CallInst *> found_calls = CallFinder<IRUnitT>::find_in(unit, filter);
     // it is used to find MPI_Init and MPI_Finalize calls,
     // these cannot be called more than once.
     assert (found_calls.size() <= 1);
@@ -37,6 +38,40 @@ namespace {
   /*
     MPIInit_Call find_mpi_init(IRUnitT &unit); // this function can internally call "find_call_in_by_name" ...
    */
+
+  struct FnExplorationState {
+    enum ExplorationState { NONE, PROCESSED, PROCESSING };
+    enum ResultState { SEQUENTIAL, MPI_INVOLVED }; // MPI_INVOLVED - split to: direct and mediated
+
+    FnExplorationState() : state(NONE) { }
+    FnExplorationState(const ExplorationState& xs) : state(xs) { }
+
+    bool isa_state(const ExplorationState &xs) const {
+      return state == xs;
+    }
+
+  private:
+    ExplorationState state;
+    ResultState result;
+  };
+
+  using FnExplorState = std::map<Function *, FnExplorationState>;
+
+
+  void explore_function(Function *f, FnExplorState &current_state) {
+    vector<CallInst *> call_insts = CallFinder<Function>::find_in(*f);
+    for (CallInst *call_inst : call_insts) {
+      Function *called_fn = call_inst->getCalledFunction();
+      if (called_fn) {
+        auto search = current_state.find(called_fn);
+        if (search == current_state.end()) {
+          current_state[called_fn] = FnExplorationState(FnExplorationState::PROCESSING);
+        }
+      } else {
+        errs() << "no called function for: '" << *call_inst << "'\n";
+      }
+    }
+  }
 }
 
 // The analysis runs over a module and tries to find a function that covers
@@ -60,15 +95,23 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
     return MPIScopeResult(); // empty (invalid) scope result
   }
 
-  vector<CallInst*> main = CallFinder<Function>::find_in(*main_unit);
-  errs() << "Num of calls: " << main.size() << "\n";
-  int i = 1;
-  for (CallInst *inst : main) {
-    if (auto *called_fn = inst->getCalledFunction()) {
-      errs() << i << ": " << called_fn->getName() << "\n";
-    }
-    i++;
-  }
+  // ValueMap<Function*, bool> fstate;
+  // ValueMap<Function*, bool> FNodesInTree;
+  FnExplorState fstate;
+  explore_function(main_unit, fstate);
+
+  // ValueMap<const Function *, int> fState;
+  // explore_function(main_unit, fState);
+
+  // vector<CallInst*> main = CallFinder<Function>::find_in(*main_unit);
+  // errs() << "Num of calls: " << main.size() << "\n";
+  // int i = 1;
+  // for (CallInst *inst : main) {
+  //   if (auto *called_fn = inst->getCalledFunction()) {
+  //     errs() << i << ": " << called_fn->getName() << "\n";
+  //   }
+  //   i++;
+  // }
 
   return MPIScopeResult();
 

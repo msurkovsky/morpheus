@@ -2,6 +2,7 @@
 #include "CallFinder.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
+#include "llvm/IR/Dominators.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cassert>
@@ -95,10 +96,30 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
     return MPIScopeResult(); // empty (invalid) scope result
   }
 
+  // for (auto &bb : *main_unit) {
+  //   errs() << bb << "\n";
+  // }
+
+  DominatorTree dt(*main_unit);
+  auto *root_node = dt.getRootNode();
+  errs() << "root node: " << *root_node->getBlock() << "\n"; // TODO: don't forget to investigate root node as well.
+
+  // TODO: use post-dominator tree. Hence investigate the blocks in bottom-up order
+
+  for (auto it = root_node->begin(); it != root_node->end(); it++) {
+    errs() << *it << "\n";
+    auto *block = (*it)->getBlock();
+    errs() << "block: " << *block << "\n";
+    // for (auto &instr : *block) {
+    //     errs() << "\t" << instr << "\n";
+    // }
+  }
+
   // ValueMap<Function*, bool> fstate;
   // ValueMap<Function*, bool> FNodesInTree;
-  FnExplorState fstate;
-  explore_function(main_unit, fstate);
+
+  // FnExplorState fstate;
+  // explore_function(main_unit, fstate);
 
   // ValueMap<const Function *, int> fState;
   // explore_function(main_unit, fState);

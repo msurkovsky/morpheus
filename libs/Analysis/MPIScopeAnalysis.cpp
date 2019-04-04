@@ -114,6 +114,12 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
   // }
 
   // NOTE: traverse Dominator Tree
+  auto *root_node = pdt.getRootNode();
+  for (auto it = root_node->begin(); it != root_node->end(); it++) {
+    auto *block = (*it)->getBlock();
+    errs() << "bb: " << *block << "\n";
+  }
+
   for (auto node = GraphTraits<PostDominatorTree*>::nodes_begin(&pdt);
        node != GraphTraits<PostDominatorTree*>::nodes_end(&pdt);
        ++node) {

@@ -3,6 +3,7 @@
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
 #include "llvm/IR/Dominators.h"
+#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cassert>
@@ -100,20 +101,44 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
   //   errs() << bb << "\n";
   // }
 
-  DominatorTree dt(*main_unit);
-  auto *root_node = dt.getRootNode();
-  errs() << "root node: " << *root_node->getBlock() << "\n"; // TODO: don't forget to investigate root node as well.
+  PostDominatorTree pdt(*main_unit);
+  // pdt.viewGraph();
+  // auto *root_node = pdt.getRootNode();
+  // errs() << "root node: " << *root_node->getBlock() << "\n"; // TODO: don't forget to investigate root node as well.
 
   // TODO: use post-dominator tree. Hence investigate the blocks in bottom-up order
 
-  for (auto it = root_node->begin(); it != root_node->end(); it++) {
-    errs() << *it << "\n";
-    auto *block = (*it)->getBlock();
-    errs() << "block: " << *block << "\n";
-    // for (auto &instr : *block) {
-    //     errs() << "\t" << instr << "\n";
-    // }
+
+  // for (BasicBlock &bb : *main_unit) {
+  //   errs() << bb << "\n";
+  // }
+
+  // NOTE: traverse Dominator Tree
+  for (auto node = GraphTraits<PostDominatorTree*>::nodes_begin(&pdt);
+       node != GraphTraits<PostDominatorTree*>::nodes_end(&pdt);
+       ++node) {
+
+    // BasicBlock *bb = node->getBlock();
+    errs() << "block:" << *node << "\n";
   }
+
+  DominatorTree dt(*main_unit);
+  errs() << "\nPOST DOM TREE\n";
+  for (auto node= GraphTraits<DominatorTree*>::nodes_begin(&dt);
+       node != GraphTraits<DominatorTree*>::nodes_end(&dt);
+       ++node) {
+    errs() << "block:" << *node << "\n";
+  }
+
+
+
+  // for (auto it = root_node->begin(); it != root_node->end(); it++) {
+  //   auto *block = (*it)->getBlock();
+  //   errs() << "block: " << *block << "\n";
+  //   // for (auto &instr : *block) {
+  //   //     errs() << "\t" << instr << "\n";
+  //   // }
+  // }
 
   // ValueMap<Function*, bool> fstate;
   // ValueMap<Function*, bool> FNodesInTree;

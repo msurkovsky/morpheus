@@ -2,12 +2,14 @@
 #include "CallFinder.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cassert>
 #include <string>
+#include <utility>
 #include <map>
 
 using namespace llvm;
@@ -41,26 +43,26 @@ namespace {
     MPIInit_Call find_mpi_init(IRUnitT &unit); // this function can internally call "find_call_in_by_name" ...
    */
 
-  struct FnExplorationState {
-    enum ExplorationState { NONE, PROCESSED, PROCESSING };
-    enum ResultState { SEQUENTIAL, MPI_INVOLVED }; // MPI_INVOLVED - split to: direct and mediated
-
-    FnExplorationState() : state(NONE) { }
-    FnExplorationState(const ExplorationState& xs) : state(xs) { }
-
-    bool isa_state(const ExplorationState &xs) const {
-      return state == xs;
+  raw_ostream & operator<< (raw_ostream &out, const ExplorationState &s) {
+    out << "eX state: ";
+    switch(s) {
+    case ExplorationState::PROCESSED:
+      out << " PROCESSED";
+      break;
+    case ExplorationState::PROCESSING:
+      out << " PROCESSING";
+      break;
     }
+    out << "\n";
+    return out;
+  }
 
-  private:
-    ExplorationState state;
-    ResultState result;
-  };
-
-  using FnExplorState = std::map<Function *, FnExplorationState>;
+  using ExploreStates = DenseMap<const Value *, ExplorationState>;
+  // using ExploreStates = std::map<Value *, ExplorationState>;
 
 
-  void explore_function(Function *f, FnExplorState &current_state) {
+  /*
+  void explore_function(Function *f, FnExploreState &current_state) {
     vector<CallInst *> call_insts = CallFinder<Function>::find_in(*f);
     for (CallInst *call_inst : call_insts) {
       Function *called_fn = call_inst->getCalledFunction();
@@ -73,6 +75,21 @@ namespace {
         errs() << "no called function for: '" << *call_inst << "'\n";
       }
     }
+  }
+  */
+
+  void explore_bb(const BasicBlock* bb, ExploreStates &current_states) {
+    current_states.insert(std::pair<const Value *, ExplorationState>(bb, ExplorationState::PROCESSING));
+
+    errs() << "CS:\n";
+    for (auto it = current_states.begin(); it != current_states.end(); ++it) {
+      errs() << "IT: " << it->first << " ; " << it->second << "\n";
+    }
+    errs() << "\n";
+
+    std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
+    // for (CallInst *call_inst : call_insts) {
+    // }
   }
 }
 
@@ -95,6 +112,12 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
 
   if (!main_unit) {
     return MPIScopeResult(); // empty (invalid) scope result
+  }
+
+  ExploreStates es;
+  for (BasicBlock &bb : *main_unit) {
+    explore_bb(&bb, es);
+    break;
   }
 
   // for (auto &bb : *main_unit) {
@@ -120,6 +143,7 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
     errs() << "bb: " << *block << "\n";
   }
 
+  errs() << "\nPOST DOM TREE\n";
   for (auto node = GraphTraits<PostDominatorTree*>::nodes_begin(&pdt);
        node != GraphTraits<PostDominatorTree*>::nodes_end(&pdt);
        ++node) {
@@ -129,14 +153,12 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
   }
 
   DominatorTree dt(*main_unit);
-  errs() << "\nPOST DOM TREE\n";
+  errs() << "\nDOM TREE\n";
   for (auto node= GraphTraits<DominatorTree*>::nodes_begin(&dt);
        node != GraphTraits<DominatorTree*>::nodes_end(&dt);
        ++node) {
     errs() << "block:" << *node << "\n";
   }
-
-
 
   // for (auto it = root_node->begin(); it != root_node->end(); it++) {
   //   auto *block = (*it)->getBlock();

@@ -196,6 +196,7 @@ namespace llvm {
     // TODO: define it as an iterator over "unfolded" scope
   };
 
+  enum struct ExplorationState { PROCESSED, PROCESSING }; // TODO: place it on a better place
 
   class MPIScopeAnalysis : public AnalysisInfoMixin<MPIScopeAnalysis> { // both -*-module-*- and function analysis (->4.3.19: I don't think so. *module* is enough)
     static AnalysisKey Key;

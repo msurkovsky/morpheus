@@ -13,11 +13,11 @@ public:
   CallFinder() = delete;
 
   static std::vector<CallInst*> find_in(
-      IRUnitT &unit,
+      const IRUnitT &unit,
       std::function<bool(const CallInst&)> filter=[](const CallInst&) { return true; }) {
 
     CallVisitor cv(filter);
-    cv.visit(unit);
+    cv.visit(const_cast<IRUnitT &>(unit));
     return cv.found_insts;
   }
 

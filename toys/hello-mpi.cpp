@@ -1,13 +1,14 @@
 
-#include <cassert>
-#include <iostream>
-
 #include "mpi.h"
 
-std::string print_rank(int rank);
+// std::string print_rank(int rank);
 
 void ff () {
   MPI_Finalize();
+}
+
+void do_sth() {
+  // do something
 }
 
 int main (int argc, char *argv[]) {
@@ -18,15 +19,16 @@ int main (int argc, char *argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-  std::cout << "I'm the '" << print_rank(rank) << "' process out of " << size << std::endl;
+  // std::cout << "I'm the '" << print_rank(rank) << "' process out of " << size << std::endl;
   if (rank == 0) {
-    std::cout << "Doing sth. special..." << std::endl;
+    do_sth();
   }
 
   ff();
   return 0;
 }
 
+/*
 std::string print_rank(int rank) {
   assert (rank >= 0);
 
@@ -49,3 +51,4 @@ std::string print_rank(int rank) {
 
   return std::to_string(rank) + sufix;
 }
+*/

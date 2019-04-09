@@ -43,53 +43,98 @@ namespace {
     MPIInit_Call find_mpi_init(IRUnitT &unit); // this function can internally call "find_call_in_by_name" ...
    */
 
-  raw_ostream & operator<< (raw_ostream &out, const ExplorationState &s) {
-    out << "eX state: ";
-    switch(s) {
-    case ExplorationState::PROCESSED:
-      out << " PROCESSED";
-      break;
-    case ExplorationState::PROCESSING:
-      out << " PROCESSING";
-      break;
+  using ExploreStates = DenseMap<const Value *, ExplorationState>;
+
+  ExplorationState explore_bb(const BasicBlock *, ExploreStates &);
+
+  ExplorationState explore_function(const Function *f, ExploreStates &current_states) {
+    auto it = current_states.find(f);
+    if (it != current_states.end()) {
+      return it->getSecond();
     }
-    out << "\n";
-    return out;
+
+    if (f->hasName() && f->getName().startswith("MPI_")) {
+      current_states.insert({ f, ExplorationState::MPI_CALL });
+      return ExplorationState::MPI_CALL;
+    }
+
+    // NOTE: store the info that the function is currently being processed.
+    //       This helps to resolve recursive calls.
+
+    // => TEST: make a test to simple function calling itself. => it has to end with sequential
+    current_states.insert({ f, ExplorationState::PROCESSING });
+
+    ExplorationState res_es = ExplorationState::PROCESSING;
+    for (const BasicBlock &bb : *f) {
+      const ExplorationState& es = explore_bb(&bb, current_states);
+      // NOTE: basic block cannot be directly of MPI_CALL type
+
+      if (res_es < es) {
+        res_es = es;
+      }
+
+      // NOTE: continue inspecting other functions to cover all calls.
+    }
+
+    if (res_es == ExplorationState::PROCESSING) { // At this point PROCESSING state
+                                               // changes to SEQUENTIAL
+      res_es = ExplorationState::SEQUENTIAL;
+    }
+
+    current_states[f] = res_es; // set the resulting status
+    return res_es;
   }
 
-  using ExploreStates = DenseMap<const Value *, ExplorationState>;
-  // using ExploreStates = std::map<Value *, ExplorationState>;
+  ExplorationState explore_bb(const BasicBlock* bb, ExploreStates &current_states) {
+    auto it = current_states.find(bb);
+    if (it != current_states.end()) {
+      return it->getSecond();
+    }
 
-
-  /*
-  void explore_function(Function *f, FnExploreState &current_state) {
-    vector<CallInst *> call_insts = CallFinder<Function>::find_in(*f);
+    ExplorationState res_es = ExplorationState::SEQUENTIAL;
+    std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
     for (CallInst *call_inst : call_insts) {
       Function *called_fn = call_inst->getCalledFunction();
       if (called_fn) {
-        auto search = current_state.find(called_fn);
-        if (search == current_state.end()) {
-          current_state[called_fn] = FnExplorationState(FnExplorationState::PROCESSING);
+        const ExplorationState &es = explore_function(called_fn, current_states);
+
+        if (es == ExplorationState::MPI_CALL) {
+          res_es = ExplorationState::MPI_INVOLVED;
+        } else if (es > ExplorationState::MPI_CALL) {
+          res_es = ExplorationState::MPI_INVOLVED_MEDIATELY;
         }
       } else {
         errs() << "no called function for: '" << *call_inst << "'\n";
       }
     }
+
+    current_states.insert({ bb, res_es });
+    return res_es;
   }
-  */
+}
 
-  void explore_bb(const BasicBlock* bb, ExploreStates &current_states) {
-    current_states.insert(std::pair<const Value *, ExplorationState>(bb, ExplorationState::PROCESSING));
-
-    errs() << "CS:\n";
-    for (auto it = current_states.begin(); it != current_states.end(); ++it) {
-      errs() << "IT: " << it->first << " ; " << it->second << "\n";
+namespace llvm {
+  raw_ostream & operator<< (raw_ostream &out, const ExplorationState &s) {
+    out << "eX state =";
+    switch(s) {
+    case ExplorationState::PROCESSING:
+      out << " PROCESSING";
+      break;
+    case ExplorationState::SEQUENTIAL:
+      out << " SEQUENTIAL";
+      break;
+    case ExplorationState::MPI_CALL:
+      out << " MPI_CALL";
+      break;
+    case ExplorationState::MPI_INVOLVED:
+      out << " MPI_INVOLVED";
+      break;
+    case ExplorationState::MPI_INVOLVED_MEDIATELY:
+      out << " MPI_INVOLVED_MEDIATELY";
+      break;
     }
-    errs() << "\n";
-
-    std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
-    // for (CallInst *call_inst : call_insts) {
-    // }
+    out << "\n";
+    return out;
   }
 }
 
@@ -114,10 +159,11 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
     return MPIScopeResult(); // empty (invalid) scope result
   }
 
-  ExploreStates es;
-  for (BasicBlock &bb : *main_unit) {
-    explore_bb(&bb, es);
-    break;
+  ExploreStates ess;
+  ExplorationState es = explore_function(main_unit, ess);
+  errs() << "Main function: " << es << "\n";
+  for (auto it = ess.begin(); it != ess.end(); ++it) {
+    errs() << it->getFirst()->getName() << ": " << it->getSecond() << "\n";
   }
 
   // for (auto &bb : *main_unit) {

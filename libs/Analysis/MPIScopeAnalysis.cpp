@@ -1,5 +1,6 @@
 
 #include "CallFinder.hpp"
+#include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
 #include "llvm/ADT/DenseMap.h"
@@ -43,6 +44,7 @@ namespace {
     MPIInit_Call find_mpi_init(IRUnitT &unit); // this function can internally call "find_call_in_by_name" ...
    */
 
+  /*
   using ExploreStates = DenseMap<const Value *, ExplorationState>;
 
   ExplorationState explore_bb(const BasicBlock *, ExploreStates &);
@@ -61,7 +63,7 @@ namespace {
     // NOTE: store the info that the function is currently being processed.
     //       This helps to resolve recursive calls.
 
-    // => TEST: make a test to simple function calling itself. => it has to end with sequential
+    // TODO: => TEST: make a test to simple function calling itself. => it has to end with sequential
     current_states.insert({ f, ExplorationState::PROCESSING });
 
     ExplorationState res_es = ExplorationState::PROCESSING;
@@ -111,31 +113,7 @@ namespace {
     current_states.insert({ bb, res_es });
     return res_es;
   }
-}
-
-namespace llvm {
-  raw_ostream & operator<< (raw_ostream &out, const ExplorationState &s) {
-    out << "eX state =";
-    switch(s) {
-    case ExplorationState::PROCESSING:
-      out << " PROCESSING";
-      break;
-    case ExplorationState::SEQUENTIAL:
-      out << " SEQUENTIAL";
-      break;
-    case ExplorationState::MPI_CALL:
-      out << " MPI_CALL";
-      break;
-    case ExplorationState::MPI_INVOLVED:
-      out << " MPI_INVOLVED";
-      break;
-    case ExplorationState::MPI_INVOLVED_MEDIATELY:
-      out << " MPI_INVOLVED_MEDIATELY";
-      break;
-    }
-    out << "\n";
-    return out;
-  }
+  */
 }
 
 // The analysis runs over a module and tries to find a function that covers
@@ -159,12 +137,15 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
     return MPIScopeResult(); // empty (invalid) scope result
   }
 
+  MPILabellingAnalysis la;
+  /*
   ExploreStates ess;
   ExplorationState es = explore_function(main_unit, ess);
   errs() << "Main function: " << es << "\n";
   for (auto it = ess.begin(); it != ess.end(); ++it) {
     errs() << it->getFirst()->getName() << ": " << it->getSecond() << "\n";
   }
+  */
 
   // for (auto &bb : *main_unit) {
   //   errs() << bb << "\n";

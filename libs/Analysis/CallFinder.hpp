@@ -1,8 +1,9 @@
 
-#include "llvm/ADT/StringRef.h"
+#ifndef MR_CALLFINDER_H
+#define MR_CALLFINDER_H
+
 #include "llvm/IR/InstVisitor.h"
 #include <vector>
-#include <functional>
 
 using namespace llvm;
 
@@ -40,3 +41,5 @@ private:
     }
   };
 };
+
+#endif // MR_CALLFINDER_H

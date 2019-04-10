@@ -3,6 +3,7 @@ add_library (RankInfoAnalysis MODULE
   IsRank.cpp
   tagrank_pass.cpp
   MPIScopeAnalysis.cpp
+  MPILabellingAnalysis.cpp
   )
 
 target_include_directories (RankInfoAnalysis PRIVATE ${MORPHEUS_INCLUDES})

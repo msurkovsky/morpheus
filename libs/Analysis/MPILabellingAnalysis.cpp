@@ -48,8 +48,6 @@ ExplorationState LabellingResult::explore_function(const Function *f) {
       res_es = es;
     }
 
-    // TODO: count with compound MPI_INVOLVED and MPI_INVOLVED_MEDIATELY together
-
     // NOTE: continue inspecting other functions to cover all calls.
   }
 

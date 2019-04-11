@@ -21,15 +21,16 @@ AnalysisKey MPILabellingAnalysis::Key;
 // -------------------------------------------------------------------------- //
 // LabellingResult
 
-ExplorationState LabellingResult::explore_function(const Function *f) {
+LabellingResult::ExplorationState
+LabellingResult::explore_function(const Function *f) {
   auto it = fn_labels.find(f);
   if (it != fn_labels.end()) {
     return it->getSecond();
   }
 
   if (f->hasName() && f->getName().startswith("MPI_")) {
-    fn_labels[f] = ExplorationState::MPI_CALL;
-    return ExplorationState::MPI_CALL;
+    fn_labels[f] = MPI_CALL;
+    return MPI_CALL;
   }
 
   // NOTE: store the info that the function is currently being processed.
@@ -37,9 +38,9 @@ ExplorationState LabellingResult::explore_function(const Function *f) {
   //       PROCESSING status.
 
   // TODO: => TEST: make a test to simple function calling itself. => it has to end with sequential
-  fn_labels[f] = ExplorationState::PROCESSING;
+  fn_labels[f] = PROCESSING;
 
-  ExplorationState res_es = ExplorationState::SEQUENTIAL; // NOTE (10.4.19): changed from PROCESSING -> I suppose that is sequential unless otherwise
+  ExplorationState res_es = SEQUENTIAL;
   for (const BasicBlock &bb : *f) {
     const ExplorationState& es = explore_bb(&bb, direct_mpi_calls[f], mediate_mpi_calls[f]);
     // NOTE: basic block cannot be directly of MPI_CALL type
@@ -55,24 +56,24 @@ ExplorationState LabellingResult::explore_function(const Function *f) {
   return res_es;
 }
 
-ExplorationState LabellingResult::explore_bb(
+LabellingResult::ExplorationState LabellingResult::explore_bb(
     const BasicBlock *bb,
     std::vector<CallInst *> &direct_mpi_calls,
     std::vector<CallInst *> &mediate_mpi_calls
 ) {
 
-  ExplorationState res_es = ExplorationState::SEQUENTIAL;
+  ExplorationState res_es = SEQUENTIAL;
   std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
   for (CallInst *call_inst : call_insts) {
     Function *called_fn = call_inst->getCalledFunction();
     if (called_fn) {
-      const ExplorationState &es = explore_function(called_fn);
+      ExplorationState es = explore_function(called_fn);
 
-      if (es == ExplorationState::MPI_CALL) {
-        res_es = ExplorationState::MPI_INVOLVED;
+      if (es == MPI_CALL) {
+        res_es = MPI_INVOLVED;
         mpi_calls[called_fn->getName()].push_back(call_inst);
         direct_mpi_calls.push_back(call_inst);
-      } else if (es > ExplorationState::MPI_CALL) {
+      } else if (es > MPI_CALL) {
         res_es = ExplorationState::MPI_INVOLVED_MEDIATELY;
         mediate_mpi_calls.push_back(call_inst);
       }

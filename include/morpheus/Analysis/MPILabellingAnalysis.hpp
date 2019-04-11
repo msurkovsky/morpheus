@@ -17,22 +17,20 @@
 #include <vector>
 
 
-namespace {
-  enum struct ExplorationState {
-    PROCESSING = 0,
-    SEQUENTIAL,
-    MPI_CALL,
-    MPI_INVOLVED,
-    MPI_INVOLVED_MEDIATELY,
-  };
-}
-
-
 namespace llvm {
 
   class MPILabellingAnalysis;
+
   class LabellingResult {
     friend MPILabellingAnalysis;
+
+    enum ExplorationState {
+      PROCESSING = 0,
+      SEQUENTIAL,
+      MPI_CALL,
+      MPI_INVOLVED,
+      MPI_INVOLVED_MEDIATELY,
+    };
 
     using FunctionLabels = DenseMap<Function const *, ExplorationState>;
     using MPICalls = DenseMap<StringRef, std::vector<CallInst *>>;
@@ -69,36 +67,5 @@ namespace llvm {
 
   }; // MPILabellingAnalysis
 } // llvm
-
-
-/*
-namespace {
-
-  using namespace llvm;
-
-  raw_ostream & operator<< (raw_ostream &out, const ExplorationState &s) {
-    out << "Exploration state =";
-    switch(s) {
-    case ExplorationState::PROCESSING:
-      out << " PROCESSING";
-      break;
-    case ExplorationState::SEQUENTIAL:
-      out << " SEQUENTIAL";
-      break;
-    case ExplorationState::MPI_CALL:
-      out << " MPI_CALL";
-      break;
-    case ExplorationState::MPI_INVOLVED:
-      out << " MPI_INVOLVED";
-      break;
-    case ExplorationState::MPI_INVOLVED_MEDIATELY:
-      out << " MPI_INVOLVED_MEDIATELY";
-      break;
-    }
-    out << "\n";
-    return out;
-  }
-}
-*/
 
 #endif // MR_MPI_LABELLING_H

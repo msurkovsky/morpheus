@@ -138,6 +138,10 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
   }
 
   MPILabellingAnalysis la;
+  FunctionAnalysisManager fam;
+  LabellingResult lr = la.run(*main_unit, fam);
+  errs() << "MPI_Init: " << *lr.get_call("MPI_Init") << "\n";
+
   /*
   ExploreStates ess;
   ExplorationState es = explore_function(main_unit, ess);

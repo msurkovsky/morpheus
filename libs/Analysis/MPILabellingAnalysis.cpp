@@ -68,7 +68,7 @@ ExplorationState LabellingResult::explore_bb(const BasicBlock *bb) {
 
       if (es == ExplorationState::MPI_CALL) {
         res_es = ExplorationState::MPI_INVOLVED;
-        mpi_calls.insert({ called_fn->getName(), { call_inst } }); // TODO: it won't work as it's. I need to "append" call.
+        map_mpi_call(called_fn->getName(), call_inst);
       } else if (es > ExplorationState::MPI_CALL) {
         res_es = ExplorationState::MPI_INVOLVED_MEDIATELY;
       }
@@ -79,4 +79,11 @@ ExplorationState LabellingResult::explore_bb(const BasicBlock *bb) {
   }
 
   return res_es;
+}
+
+void LabellingResult::map_mpi_call(StringRef name, CallInst *inst) {
+  if (mpi_calls.count(name) == 0) {
+    mpi_calls.insert({ name, {} });
+  }
+  mpi_calls[name].push_back(inst);
 }

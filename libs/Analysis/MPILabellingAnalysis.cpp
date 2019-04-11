@@ -28,7 +28,7 @@ ExplorationState LabellingResult::explore_function(const Function *f) {
   }
 
   if (f->hasName() && f->getName().startswith("MPI_")) {
-    fn_labels.insert({ f, ExplorationState::MPI_CALL });
+    fn_labels[f] = ExplorationState::MPI_CALL;
     return ExplorationState::MPI_CALL;
   }
 
@@ -37,11 +37,11 @@ ExplorationState LabellingResult::explore_function(const Function *f) {
   //       PROCESSING status.
 
   // TODO: => TEST: make a test to simple function calling itself. => it has to end with sequential
-  fn_labels.insert({ f, ExplorationState::PROCESSING });
+  fn_labels[f] = ExplorationState::PROCESSING;
 
   ExplorationState res_es = ExplorationState::SEQUENTIAL; // NOTE (10.4.19): changed from PROCESSING -> I suppose that is sequential unless otherwise
   for (const BasicBlock &bb : *f) {
-    const ExplorationState& es = explore_bb(&bb);
+    const ExplorationState& es = explore_bb(&bb, direct_mpi_calls[f], mediate_mpi_calls[f]);
     // NOTE: basic block cannot be directly of MPI_CALL type
 
     if (res_es < es) {
@@ -57,7 +57,11 @@ ExplorationState LabellingResult::explore_function(const Function *f) {
   return res_es;
 }
 
-ExplorationState LabellingResult::explore_bb(const BasicBlock *bb) {
+ExplorationState LabellingResult::explore_bb(
+    const BasicBlock *bb,
+    std::vector<CallInst *> &direct_mpi_calls,
+    std::vector<CallInst *> &mediate_mpi_calls
+) {
 
   ExplorationState res_es = ExplorationState::SEQUENTIAL;
   std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
@@ -68,9 +72,11 @@ ExplorationState LabellingResult::explore_bb(const BasicBlock *bb) {
 
       if (es == ExplorationState::MPI_CALL) {
         res_es = ExplorationState::MPI_INVOLVED;
-        map_mpi_call(called_fn->getName(), call_inst);
+        mpi_calls[called_fn->getName()].push_back(call_inst);
+        direct_mpi_calls.push_back(call_inst);
       } else if (es > ExplorationState::MPI_CALL) {
         res_es = ExplorationState::MPI_INVOLVED_MEDIATELY;
+        mediate_mpi_calls.push_back(call_inst);
       }
     } else {
       // TODO: use assert(false) here!
@@ -79,11 +85,4 @@ ExplorationState LabellingResult::explore_bb(const BasicBlock *bb) {
   }
 
   return res_es;
-}
-
-void LabellingResult::map_mpi_call(StringRef name, CallInst *inst) {
-  if (mpi_calls.count(name) == 0) {
-    mpi_calls.insert({ name, {} });
-  }
-  mpi_calls[name].push_back(inst);
 }

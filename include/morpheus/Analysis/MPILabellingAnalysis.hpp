@@ -34,12 +34,16 @@ namespace llvm {
   class LabellingResult {
     friend MPILabellingAnalysis;
 
-    using FunctionLabels = DenseMap<const Function *, ExplorationState>;
-    using MPICalls = DenseMap<StringRef, std::vector<CallInst *> >;
+    using FunctionLabels = DenseMap<Function const *, ExplorationState>;
+    using MPICalls = DenseMap<StringRef, std::vector<CallInst *>>;
+    using FunctionCalls = DenseMap<Function const *, std::vector<CallInst *>>;
 
     FunctionLabels fn_labels;
     MPICalls mpi_calls;
-    // TODO: do I need to store parentage relation?
+    FunctionCalls direct_mpi_calls;
+    FunctionCalls mediate_mpi_calls;
+
+    // TODO: do I need to store parentage relation? - NO (11.4.19)
   public:
     // some public methods
 
@@ -47,7 +51,9 @@ namespace llvm {
 
     ExplorationState explore_function(const Function *f);
 
-    ExplorationState explore_bb(const BasicBlock *bb);
+    ExplorationState explore_bb(const BasicBlock *bb,
+                                std::vector<CallInst *> &direct_mpi_calls,
+                                std::vector<CallInst *> &mediate_mpi_calls);
 
     void map_mpi_call(StringRef name, CallInst *inst);
 
@@ -65,6 +71,7 @@ namespace llvm {
 } // llvm
 
 
+/*
 namespace {
 
   using namespace llvm;
@@ -92,5 +99,6 @@ namespace {
     return out;
   }
 }
+*/
 
 #endif // MR_MPI_LABELLING_H

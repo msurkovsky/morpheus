@@ -1,6 +1,9 @@
 #include "CallFinder.hpp"
 
+#include "llvm/Analysis/CallGraph.h"
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
+
+#include <cassert>
 
 
 using namespace llvm;
@@ -11,6 +14,12 @@ using namespace llvm;
 LabellingResult
 MPILabellingAnalysis::run (Function &f, FunctionAnalysisManager &fam) {
 
+  CallGraph cg(*f.getParent());
+
+  CallGraphNode *cgn_f  = cg[&f];
+
+  errs() << "TESTING:\n";
+  cgn_f->print(errs());
   LabellingResult result;
   result.explore_function(&f);
 
@@ -45,7 +54,7 @@ LabellingResult::explore_function(const Function *f) {
 
   ExplorationState res_es = SEQUENTIAL;
   for (const BasicBlock &bb : *f) {
-    const ExplorationState& es = explore_bb(&bb, direct_mpi_calls[f], mediate_mpi_calls[f]);
+    const ExplorationState& es = explore_bb(&bb);
     // NOTE: basic block cannot be directly of MPI_CALL type
 
     if (res_es < es) {
@@ -59,40 +68,88 @@ LabellingResult::explore_function(const Function *f) {
   return res_es;
 }
 
-LabellingResult::ExplorationState LabellingResult::explore_bb(
-    const BasicBlock *bb,
-    std::vector<CallInst *> &direct_mpi_calls,
-    std::vector<CallInst *> &mediate_mpi_calls
-) {
+LabellingResult::ExplorationState
+LabellingResult::explore_bb(const BasicBlock *bb) {
 
   ExplorationState res_es = SEQUENTIAL;
   std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
   for (CallInst *call_inst : call_insts) {
     Function *called_fn = call_inst->getCalledFunction();
-    if (called_fn) {
-      ExplorationState es = explore_function(called_fn);
 
-      if (es == MPI_CALL) {
-        res_es = MPI_INVOLVED;
-        mpi_calls[called_fn->getName()].push_back(call_inst);
-        direct_mpi_calls.push_back(call_inst);
-      } else if (es > MPI_CALL) {
-        res_es = ExplorationState::MPI_INVOLVED_MEDIATELY;
-        mediate_mpi_calls.push_back(call_inst);
-      }
-    } else {
-      // TODO: use assert(false) here!
-      errs() << "no called function for: '" << *call_inst << "'\n";
+    assert(called_fn != nullptr);
+
+    ExplorationState es = explore_function(called_fn);
+    if (es == MPI_CALL) {
+      res_es = MPI_INVOLVED;
+      mpi_calls[called_fn->getName()].push_back(call_inst);
+      mpi_affected_calls[bb].push_back({ call_inst, MPICallType::DIRECT });
+    } else if (es > MPI_CALL) {
+      res_es = ExplorationState::MPI_INVOLVED_MEDIATELY;
+      mpi_affected_calls[bb].push_back({ call_inst, MPICallType::INDIRECT });
     }
   }
 
   return res_es;
 }
 
-CallInst * LabellingResult::get_call(StringRef name) {
+CallInst * LabellingResult::get_unique_call(StringRef name) const {
 
-  if (mpi_calls.count(name) == 0) {
+  auto search = mpi_calls.find(name);
+  if (search == mpi_calls.end()) {
     return nullptr;
   }
-  return mpi_calls[name][0]; // TODO: count with more call
+
+  const std::vector<CallInst *> &calls = search->second;
+  assert(calls.size() == 1);
+
+  return calls[0];
+}
+
+bool LabellingResult::is_sequential(Function const *f) const {
+  return check_status<SEQUENTIAL>(f);
+}
+
+bool LabellingResult::is_mpi_involved(Function const *f) const {
+  return (check_status<MPI_INVOLVED>(f) ||
+          check_status<MPI_INVOLVED_MEDIATELY>(f));
+}
+
+bool LabellingResult::does_invoke_call(
+    Function const *f,
+    StringRef name
+) const {
+
+  for (const BasicBlock &bb : *f) {
+    auto it = mpi_affected_calls.find(&bb);
+    assert (it != mpi_affected_calls.end()); // TODO: is it correct?
+
+    const std::vector<std::pair<CallInst *, MPICallType>> &calls = it->second;
+    for (const std::pair<CallInst *, MPICallType> &call_type : calls) {
+      CallInst * inst = call_type.first;
+      StringRef inst_name = inst->getCalledFunction()->getName();
+      if (call_type.second == MPICallType::DIRECT && inst_name == name) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+std::vector<CallInst *>
+LabellingResult::get_indirect_mpi_calls(Function const *f) const {
+
+  std::vector<CallInst *> indirect_calls;
+  for (const BasicBlock &bb : *f) {
+    auto it = mpi_affected_calls.find(&bb);
+    assert (it != mpi_affected_calls.end()); // TODO: is it correct?
+
+    const std::vector<std::pair<CallInst *, MPICallType>> &calls = it->second;
+    for (const std::pair<CallInst *, MPICallType> &call_type : calls) {
+      if (call_type.second == MPICallType::INDIRECT) {
+        indirect_calls.push_back(call_type.first);
+      }
+    }
+  }
+
+  return indirect_calls;
 }

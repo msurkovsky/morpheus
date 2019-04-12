@@ -4,8 +4,10 @@
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/IR/Dominators.h"
-#include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/CallGraph.h"
+#include "llvm/IR/CallSite.h" // TODO: remove
+#include "llvm/IR/Dominators.h" // TODO: remove
+#include "llvm/Analysis/PostDominators.h" // TODO: remove
 #include "llvm/Support/raw_ostream.h"
 
 #include <cassert>
@@ -18,208 +20,80 @@ using namespace std;
 
 // NOTE: Morpheus -> mor, mrp, mrh ... posible prefixes
 
-namespace {
-  template<typename IRUnitT>
-  CallInst* find_call_in_by_name(const string &name, IRUnitT &unit) {
-    auto filter = [name](const CallInst &inst) {
-      if (auto *called_fn = inst.getCalledFunction()) {
-        if (called_fn->getName() == name) {
-          return true;
-        }
-      }
-      return false;
-    };
-    vector<CallInst *> found_calls = CallFinder<IRUnitT>::find_in(unit, filter);
-    // it is used to find MPI_Init and MPI_Finalize calls,
-    // these cannot be called more than once.
-    assert (found_calls.size() <= 1);
-    if (found_calls.size() > 0) {
-      return found_calls.front();
-    }
-    return nullptr;
-  }
-
-  // TODO: new interface should look like: (4.3.19: does it?)
-  /*
-    MPIInit_Call find_mpi_init(IRUnitT &unit); // this function can internally call "find_call_in_by_name" ...
-   */
-
-  /*
-  using ExploreStates = DenseMap<const Value *, ExplorationState>;
-
-  ExplorationState explore_bb(const BasicBlock *, ExploreStates &);
-
-  ExplorationState explore_function(const Function *f, ExploreStates &current_states) {
-    auto it = current_states.find(f);
-    if (it != current_states.end()) {
-      return it->getSecond();
-    }
-
-    if (f->hasName() && f->getName().startswith("MPI_")) {
-      current_states.insert({ f, ExplorationState::MPI_CALL });
-      return ExplorationState::MPI_CALL;
-    }
-
-    // NOTE: store the info that the function is currently being processed.
-    //       This helps to resolve recursive calls.
-
-    // TODO: => TEST: make a test to simple function calling itself. => it has to end with sequential
-    current_states.insert({ f, ExplorationState::PROCESSING });
-
-    ExplorationState res_es = ExplorationState::PROCESSING;
-    for (const BasicBlock &bb : *f) {
-      const ExplorationState& es = explore_bb(&bb, current_states);
-      // NOTE: basic block cannot be directly of MPI_CALL type
-
-      if (res_es < es) {
-        res_es = es;
-      }
-
-      // NOTE: continue inspecting other functions to cover all calls.
-    }
-
-    if (res_es == ExplorationState::PROCESSING) { // At this point PROCESSING state
-                                               // changes to SEQUENTIAL
-      res_es = ExplorationState::SEQUENTIAL;
-    }
-
-    current_states[f] = res_es; // set the resulting status
-    return res_es;
-  }
-
-  ExplorationState explore_bb(const BasicBlock* bb, ExploreStates &current_states) {
-    auto it = current_states.find(bb);
-    if (it != current_states.end()) {
-      return it->getSecond();
-    }
-
-    ExplorationState res_es = ExplorationState::SEQUENTIAL;
-    std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
-    for (CallInst *call_inst : call_insts) {
-      Function *called_fn = call_inst->getCalledFunction();
-      if (called_fn) {
-        const ExplorationState &es = explore_function(called_fn, current_states);
-
-        if (es == ExplorationState::MPI_CALL) {
-          res_es = ExplorationState::MPI_INVOLVED;
-        } else if (es > ExplorationState::MPI_CALL) {
-          res_es = ExplorationState::MPI_INVOLVED_MEDIATELY;
-        }
-      } else {
-        errs() << "no called function for: '" << *call_inst << "'\n";
-      }
-    }
-
-    current_states.insert({ bb, res_es });
-    return res_es;
-  }
-  */
-}
-
 // The analysis runs over a module and tries to find a function that covers
 // the communication, either directly (MPI_Init/Finalize calls) or mediately
-// (via functions that calls MPI_Initi/Finalize within)
+// (via functions that calls MPI_Init/Finalize within)
 MPIScopeAnalysis::Result
 MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
 
   string main_f_name = "main";
 
   // Find the main function
-  Function *main_unit = nullptr;
+  Function *main_fn = nullptr;
   for (auto &f : m) {
     if (f.hasName() && f.getName() == "main") {
-      main_unit = &f;
+      main_fn = &f;
       break;
     }
   }
 
-  if (!main_unit) {
+  if (!main_fn) {
     return MPIScopeResult(); // empty (invalid) scope result
   }
 
-  MPILabellingAnalysis la;
+  CallGraph cg(m);
+
+  cg.print(errs());
+
+  errs() << "========\n";
+
   FunctionAnalysisManager fam;
-  LabellingResult lr = la.run(*main_unit, fam);
-  errs() << "MPI_Init: " << *lr.get_call("MPI_Init") << "\n";
+
+  MPILabellingAnalysis la;
+  LabellingResult lr = la.run(*main_fn, fam);
+  CallInst *ci = lr.get_unique_call("MPI_Init");
+
+  CallGraphNode *cgn = cg[ci->getFunction()];
+
+  errs() << "MAIN:\n";
+  cgn->print(errs());
+  for (CallGraphNode::CallRecord &cr : *cgn) {
+    errs() << "ABC:\n";
+    cr.second->print(errs());
+  }
+
 
   /*
-  ExploreStates ess;
-  ExplorationState es = explore_function(main_unit, ess);
-  errs() << "Main function: " << es << "\n";
-  for (auto it = ess.begin(); it != ess.end(); ++it) {
-    errs() << it->getFirst()->getName() << ": " << it->getSecond() << "\n";
+
+  if (lr.is_sequential(main_fn)) {
+    return MPIScopeResult();
+  }
+
+  errs() << "CI: " << *ci << "\n";
+  ImmutableCallSite ics(ci);
+  errs() << "Caller: " << *ics.getCaller() << "\n";
+  */
+  /*
+  Function *scope_candiate;
+  if (lr.does_invoke_call(main_fn, "MPI_Init")) {
+    scope_candiate = main_fn;
+  } else {
+    // indirect parallel calls
+    const std::vector<CallInst *> &indirect_calls = lr.get_indirect_mpi_calls(main_fn);
+    for (CallInst *inst : indirect_calls) {
+      Function *f = inst->getCalledFunction();
+      if (lr.does_invoke_call(f, "MPI_Init")) {
+        scope_candiate = f;
+        break;
+      } else {
+        // store  for further investigation
+      }
+    }
   }
   */
 
-  // for (auto &bb : *main_unit) {
-  //   errs() << bb << "\n";
-  // }
-
-  PostDominatorTree pdt(*main_unit);
-  // pdt.viewGraph();
-  // auto *root_node = pdt.getRootNode();
-  // errs() << "root node: " << *root_node->getBlock() << "\n"; // TODO: don't forget to investigate root node as well.
-
-  // TODO: use post-dominator tree. Hence investigate the blocks in bottom-up order
-
-
-  // for (BasicBlock &bb : *main_unit) {
-  //   errs() << bb << "\n";
-  // }
-
-  // NOTE: traverse Dominator Tree
-  auto *root_node = pdt.getRootNode();
-  for (auto it = root_node->begin(); it != root_node->end(); it++) {
-    auto *block = (*it)->getBlock();
-    errs() << "bb: " << *block << "\n";
-  }
-
-  errs() << "\nPOST DOM TREE\n";
-  for (auto node = GraphTraits<PostDominatorTree*>::nodes_begin(&pdt);
-       node != GraphTraits<PostDominatorTree*>::nodes_end(&pdt);
-       ++node) {
-
-    // BasicBlock *bb = node->getBlock();
-    errs() << "block:" << *node << "\n";
-  }
-
-  DominatorTree dt(*main_unit);
-  errs() << "\nDOM TREE\n";
-  for (auto node= GraphTraits<DominatorTree*>::nodes_begin(&dt);
-       node != GraphTraits<DominatorTree*>::nodes_end(&dt);
-       ++node) {
-    errs() << "block:" << *node << "\n";
-  }
-
-  // for (auto it = root_node->begin(); it != root_node->end(); it++) {
-  //   auto *block = (*it)->getBlock();
-  //   errs() << "block: " << *block << "\n";
-  //   // for (auto &instr : *block) {
-  //   //     errs() << "\t" << instr << "\n";
-  //   // }
-  // }
-
-  // ValueMap<Function*, bool> fstate;
-  // ValueMap<Function*, bool> FNodesInTree;
-
-  // FnExplorState fstate;
-  // explore_function(main_unit, fstate);
-
-  // ValueMap<const Function *, int> fState;
-  // explore_function(main_unit, fState);
-
-  // vector<CallInst*> main = CallFinder<Function>::find_in(*main_unit);
-  // errs() << "Num of calls: " << main.size() << "\n";
-  // int i = 1;
-  // for (CallInst *inst : main) {
-  //   if (auto *called_fn = inst->getCalledFunction()) {
-  //     errs() << i << ": " << called_fn->getName() << "\n";
-  //   }
-  //   i++;
-  // }
 
   return MPIScopeResult();
-
   /*
   string init_f_name = "MPI_Init";
   string finalize_f_name = "MPI_Finalize";

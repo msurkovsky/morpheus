@@ -16,6 +16,13 @@
 
 #include <vector>
 
+namespace {
+  enum struct MPICallType {
+    DIRECT,
+    INDIRECT,
+  };
+}
+
 
 namespace llvm {
 
@@ -34,29 +41,38 @@ namespace llvm {
 
     using FunctionLabels = DenseMap<Function const *, ExplorationState>;
     using MPICalls = DenseMap<StringRef, std::vector<CallInst *>>;
-    using FunctionCalls = DenseMap<Function const *, std::vector<CallInst *>>;
+    using BBCalls = DenseMap<BasicBlock const *, std::vector<std::pair<CallInst *, MPICallType>>>;
 
     FunctionLabels fn_labels;
     MPICalls mpi_calls;
-    FunctionCalls direct_mpi_calls;
-    FunctionCalls mediate_mpi_calls;
+    BBCalls mpi_affected_calls;
 
-    // TODO: do I need to store parentage relation? - NO (11.4.19)
   public:
-    // some public methods
-    CallInst * get_call(StringRef name);
+
+    CallInst * get_unique_call(StringRef name) const;
+    bool is_sequential(Function const *f) const;
+    bool is_mpi_involved(Function const *f) const;
+    bool does_invoke_call(Function const *f, StringRef name) const;
+
+    std::vector<CallInst *> get_indirect_mpi_calls(Function const *f) const;
 
   protected:
 
-    ExplorationState explore_function(const Function *f);
+    ExplorationState explore_function(Function const *f);
 
-    ExplorationState explore_bb(const BasicBlock *bb,
-                                std::vector<CallInst *> &direct_mpi_calls,
-                                std::vector<CallInst *> &mediate_mpi_calls);
+    ExplorationState explore_bb(BasicBlock const *bb);
 
-    void map_mpi_call(StringRef name, CallInst *inst);
+  private:
+    template<ExplorationState STATE> bool check_status(Function const *f) const {
+      auto search = fn_labels.find(f);
+      if (search == fn_labels.end()) {
+        return false;
+      }
+      return search->second == STATE;
+    }
 
   }; // LabellingResult
+
 
   class MPILabellingAnalysis : public AnalysisInfoMixin<MPILabellingAnalysis> {
     static AnalysisKey Key;

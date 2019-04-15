@@ -1,5 +1,6 @@
 #include "CallFinder.hpp"
 
+#include "llvm/Analysis/CallGraph.h"
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 
 #include <cassert>
@@ -13,6 +14,12 @@ using namespace llvm;
 LabellingResult
 MPILabellingAnalysis::run (Function &f, FunctionAnalysisManager &fam) {
 
+  CallGraph cg(*f.getParent());
+
+  CallGraphNode *cgn_f  = cg[&f];
+
+  errs() << "TESTING:\n";
+  cgn_f->print(errs());
   LabellingResult result;
   result.explore_function(&f);
 

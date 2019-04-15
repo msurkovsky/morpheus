@@ -26,7 +26,31 @@ using namespace std;
 MPIScopeAnalysis::Result
 MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
 
-  string main_f_name = "main";
+  /*
+  CallGraph cg(m);
+
+  string main_fname = "main";
+
+  const Function *fmain;
+  CallGraphNode *cgn_main;
+  for (auto &cr : cg) {
+    if (cr.first != nullptr && cr.first->hasName() && cr.first->getName() == main_fname) {
+      errs() << "ABC:\n";
+      // errs() << *cr.first << "\n";
+      fmain = cr.first;
+      cgn_main = cr.second.get();
+      break;
+    }
+  }
+
+  // errs() << "Fmain: " << *fmain << "\n";
+  CallGraphNode cgn(const_cast<Function *>(fmain));
+  cgn.stealCalledFunctionsFrom(cgn_main);
+
+  cgn.print(errs());
+  errs() << "From graph: \n";
+  cgn_main->print(errs());
+  */
 
   // Find the main function
   Function *main_fn = nullptr;
@@ -41,27 +65,13 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
     return MPIScopeResult(); // empty (invalid) scope result
   }
 
-  CallGraph cg(m);
-
-  cg.print(errs());
-
   errs() << "========\n";
 
   FunctionAnalysisManager fam;
 
   MPILabellingAnalysis la;
-  LabellingResult lr = la.run(*main_fn, fam);
+  LabellingResult lr = la.run(*main_fn, fam); // TODO: I don't need to call run function. I can build a result directly. Or I can take FAM as proxy of MAM(!)
   CallInst *ci = lr.get_unique_call("MPI_Init");
-
-  CallGraphNode *cgn = cg[ci->getFunction()];
-
-  errs() << "MAIN:\n";
-  cgn->print(errs());
-  for (CallGraphNode::CallRecord &cr : *cgn) {
-    errs() << "ABC:\n";
-    cr.second->print(errs());
-  }
-
 
   /*
 

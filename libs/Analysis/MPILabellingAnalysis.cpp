@@ -1,6 +1,5 @@
 #include "CallFinder.hpp"
 
-#include "llvm/Analysis/CallGraph.h"
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 
 #include <cassert>
@@ -13,17 +12,7 @@ using namespace llvm;
 
 MPILabelling
 MPILabellingAnalysis::run (Function &f, FunctionAnalysisManager &fam) {
-
-  CallGraph cg(*f.getParent());
-
-  CallGraphNode *cgn_f  = cg[&f];
-
-  errs() << "TESTING:\n";
-  cgn_f->print(errs());
-  LabellingResult result;
-  result.explore_function(&f);
-
-  return result;
+  return MPILabelling(f);
 }
 
 // provide definition of the analysis Key
@@ -33,8 +22,30 @@ AnalysisKey MPILabellingAnalysis::Key;
 // -------------------------------------------------------------------------- //
 // MPILabelling
 
+MPILabelling::MPILabelling(Function &f)
+    : root_fn(f) {
+
+  cg = std::make_unique<CallGraph>(CallGraph(*f.getParent()));
+  explore_function(&f);
+}
+
+MPILabelling::MPILabelling(const MPILabelling &labelling)
+    : root_fn(labelling.root_fn) {
+
+  // maybe I don't need the call graph ... it is a temporary object used building the structure
+  // cg = std::make_unique<CallGraph>(CallGraph(*f.getParent()));
+
+  // TODO: copy the built structure
+}
+
+// MPILabelling::MPILabelling(MPILabelling &&labelling)
+//     : root_fn(labelling.root_fn) {
+// }
+
 MPILabelling::ExplorationState
 MPILabelling::explore_function(const Function *f) {
+  (*cg)[f]->print(errs());
+
   auto it = fn_labels.find(f);
   if (it != fn_labels.end()) {
     return it->getSecond();

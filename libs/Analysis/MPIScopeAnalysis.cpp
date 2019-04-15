@@ -24,33 +24,7 @@ using namespace std;
 // the communication, either directly (MPI_Init/Finalize calls) or mediately
 // (via functions that calls MPI_Init/Finalize within)
 MPIScopeAnalysis::Result
-MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
-
-  /*
-  CallGraph cg(m);
-
-  string main_fname = "main";
-
-  const Function *fmain;
-  CallGraphNode *cgn_main;
-  for (auto &cr : cg) {
-    if (cr.first != nullptr && cr.first->hasName() && cr.first->getName() == main_fname) {
-      errs() << "ABC:\n";
-      // errs() << *cr.first << "\n";
-      fmain = cr.first;
-      cgn_main = cr.second.get();
-      break;
-    }
-  }
-
-  // errs() << "Fmain: " << *fmain << "\n";
-  CallGraphNode cgn(const_cast<Function *>(fmain));
-  cgn.stealCalledFunctionsFrom(cgn_main);
-
-  cgn.print(errs());
-  errs() << "From graph: \n";
-  cgn_main->print(errs());
-  */
+MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &mam) {
 
   // Find the main function
   Function *main_fn = nullptr;
@@ -61,17 +35,22 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
     }
   }
 
-  if (!main_fn) {
-    return MPIScopeResult(); // empty (invalid) scope result
-  }
+  assert(main_fn && "No main function within the module.");
 
-  errs() << "========\n";
+  FunctionAnalysisManager &fam = mam.getResult<FunctionAnalysisManagerModuleProxy>(m).getManager();
+  fam.registerPass([]() { return MPILabellingAnalysis(); });
 
-  FunctionAnalysisManager fam;
+  auto res = fam.getResult<MPILabellingAnalysis>(*main_fn);
+  // MPILabellingAnalysis la;
+  // LabellingResult lr = la.run(*main_fn, fam);
 
-  MPILabellingAnalysis la;
-  LabellingResult lr = la.run(*main_fn, fam); // TODO: I don't need to call run function. I can build a result directly. Or I can take FAM as proxy of MAM(!)
-  CallInst *ci = lr.get_unique_call("MPI_Init");
+  // errs() << "========\n";
+
+  // FunctionAnalysisManager fam;
+
+  // MPILabellingAnalysis la;
+  // LabellingResult lr = la.run(*main_fn, fam); // TODO: I don't need to call run function. I can build a result directly. Or I can take FAM as proxy of MAM(!)
+  // CallInst *ci = lr.get_unique_call("MPI_Init");
 
   /*
 

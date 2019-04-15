@@ -28,7 +28,7 @@ namespace llvm {
 
   class MPILabellingAnalysis;
 
-  class LabellingResult {
+  class MPILabelling {
     friend MPILabellingAnalysis;
 
     enum ExplorationState {
@@ -71,7 +71,7 @@ namespace llvm {
       return search->second == STATE;
     }
 
-  }; // LabellingResult
+  }; // MPILabelling
 
 
   class MPILabellingAnalysis : public AnalysisInfoMixin<MPILabellingAnalysis> {
@@ -80,7 +80,9 @@ namespace llvm {
 
   public:
 
-    LabellingResult run (Function &, FunctionAnalysisManager &);
+    using Result = MPILabelling;
+
+    Result run (Function &, FunctionAnalysisManager &);
 
   }; // MPILabellingAnalysis
 } // llvm

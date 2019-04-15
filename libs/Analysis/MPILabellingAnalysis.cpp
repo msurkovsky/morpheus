@@ -11,7 +11,7 @@ using namespace llvm;
 // -------------------------------------------------------------------------- //
 // MPILabellingAnalysis
 
-LabellingResult
+MPILabelling
 MPILabellingAnalysis::run (Function &f, FunctionAnalysisManager &fam) {
 
   CallGraph cg(*f.getParent());
@@ -31,10 +31,10 @@ AnalysisKey MPILabellingAnalysis::Key;
 
 
 // -------------------------------------------------------------------------- //
-// LabellingResult
+// MPILabelling
 
-LabellingResult::ExplorationState
-LabellingResult::explore_function(const Function *f) {
+MPILabelling::ExplorationState
+MPILabelling::explore_function(const Function *f) {
   auto it = fn_labels.find(f);
   if (it != fn_labels.end()) {
     return it->getSecond();
@@ -68,8 +68,8 @@ LabellingResult::explore_function(const Function *f) {
   return res_es;
 }
 
-LabellingResult::ExplorationState
-LabellingResult::explore_bb(const BasicBlock *bb) {
+MPILabelling::ExplorationState
+MPILabelling::explore_bb(const BasicBlock *bb) {
 
   ExplorationState res_es = SEQUENTIAL;
   std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
@@ -92,7 +92,7 @@ LabellingResult::explore_bb(const BasicBlock *bb) {
   return res_es;
 }
 
-CallInst * LabellingResult::get_unique_call(StringRef name) const {
+CallInst * MPILabelling::get_unique_call(StringRef name) const {
 
   auto search = mpi_calls.find(name);
   if (search == mpi_calls.end()) {
@@ -105,16 +105,16 @@ CallInst * LabellingResult::get_unique_call(StringRef name) const {
   return calls[0];
 }
 
-bool LabellingResult::is_sequential(Function const *f) const {
+bool MPILabelling::is_sequential(Function const *f) const {
   return check_status<SEQUENTIAL>(f);
 }
 
-bool LabellingResult::is_mpi_involved(Function const *f) const {
+bool MPILabelling::is_mpi_involved(Function const *f) const {
   return (check_status<MPI_INVOLVED>(f) ||
           check_status<MPI_INVOLVED_MEDIATELY>(f));
 }
 
-bool LabellingResult::does_invoke_call(
+bool MPILabelling::does_invoke_call(
     Function const *f,
     StringRef name
 ) const {
@@ -136,7 +136,7 @@ bool LabellingResult::does_invoke_call(
 }
 
 std::vector<CallInst *>
-LabellingResult::get_indirect_mpi_calls(Function const *f) const {
+MPILabelling::get_indirect_mpi_calls(Function const *f) const {
 
   std::vector<CallInst *> indirect_calls;
   for (const BasicBlock &bb : *f) {

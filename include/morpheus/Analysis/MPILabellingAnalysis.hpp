@@ -31,6 +31,7 @@ namespace llvm {
 
   class MPILabelling {
 
+  private:
     enum ExplorationState {
       PROCESSING = 0,
       SEQUENTIAL,
@@ -39,25 +40,31 @@ namespace llvm {
       MPI_INVOLVED_MEDIATELY,
     };
 
+    using CalleeCallerRM = std::pair<CallSite, CallSite>;
     // TODO: a mapping of type Callee->Caller of InstCall both of them
     using FunctionLabels = DenseMap<Function const *, ExplorationState>;
-    using MPICalls = DenseMap<StringRef, std::vector<CallInst *>>;
-    using BBCalls = DenseMap<BasicBlock const *, std::vector<std::pair<CallInst *, MPICallType>>>;
+    using CalleeCaller = DenseMap<CallSite, int>;
+
+    using MPICalls = DenseMap<StringRef, std::vector<CallSite>>;
+
+    // using  = std::pair<CallSite, MPICallType>; // TODO: come up with a name for this type
+
+    // Storage for MPI affected calls withing basic block
+    using BBCalls = DenseMap<BasicBlock const *, std::vector<std::pair<CallSite, MPICallType>>>;
 
     FunctionLabels fn_labels;
     MPICalls mpi_calls;
     BBCalls mpi_affected_calls;
+    CalleeCaller calleescaller;
 
     Function &root_fn;
-
-    // NOTE: public methods must not interact with the call graph
     std::unique_ptr<CallGraph> cg;
 
   public:
 
     explicit MPILabelling(Function &f);
     MPILabelling(const MPILabelling &labelling);
-    // MPILabelling(MPILabelling &&labelling);
+    MPILabelling(MPILabelling &&labelling); // TODO: maybe use a default implementation
 
     // TODO: review
     CallInst * get_unique_call(StringRef name) const;
@@ -73,6 +80,9 @@ namespace llvm {
 
     ExplorationState explore_bb(BasicBlock const *bb);
 
+    void explore_inst(Instruction const *inst,
+                      Instruction const *caller=nullptr);
+
     template<ExplorationState STATE> bool check_status(Function const *f) const {
       auto search = fn_labels.find(f);
       if (search == fn_labels.end()) {
@@ -80,7 +90,6 @@ namespace llvm {
       }
       return search->second == STATE;
     }
-
   }; // MPILabelling
 
 

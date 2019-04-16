@@ -29,23 +29,22 @@ MPILabelling::MPILabelling(Function &f)
   explore_function(&f);
 }
 
+// TODO: for both of the follwoing ctor copy/move the inner structres
+
 MPILabelling::MPILabelling(const MPILabelling &labelling)
     : root_fn(labelling.root_fn) {
 
-  // maybe I don't need the call graph ... it is a temporary object used building the structure
-  // cg = std::make_unique<CallGraph>(CallGraph(*f.getParent()));
+  cg = std::make_unique<CallGraph>(CallGraph(*labelling.root_fn.getParent()));
 
   // TODO: copy the built structure
 }
 
-// MPILabelling::MPILabelling(MPILabelling &&labelling)
-//     : root_fn(labelling.root_fn) {
-// }
+// TODO: maybe a default will be OK - CallGraph defines it
+MPILabelling::MPILabelling(MPILabelling &&labelling)
+    : root_fn(labelling.root_fn), cg(std::move(labelling.cg)) { }
 
 MPILabelling::ExplorationState
-MPILabelling::explore_function(const Function *f) {
-  (*cg)[f]->print(errs());
-
+MPILabelling::explore_function(Function const *f) {
   auto it = fn_labels.find(f);
   if (it != fn_labels.end()) {
     return it->getSecond();
@@ -63,6 +62,35 @@ MPILabelling::explore_function(const Function *f) {
   // TODO: => TEST: make a test to simple function calling itself. => it has to end with sequential
   fn_labels[f] = PROCESSING;
 
+  CallGraphNode *cgn = (*cg)[f];
+
+  ExplorationState res_es = SEQUENTIAL;
+  // for (instr, inner_cgn) in cgn:
+  for (const CallGraphNode::CallRecord &cr : *cgn) {
+    CallSite call_site(cr.first);
+
+    Function *called_fn = call_site.getCalledFunction();
+    const ExplorationState &es = explore_function(called_fn);
+
+    switch(es) {
+    case MPI_CALL:
+      mpi_calls[called_fn->getName()].push_back(call_site);
+      res_es = MPI_INVOLVED;
+      break;
+    case MPI_INVOLVED:
+    case MPI_INVOLVED_MEDIATELY:
+      res_es = MPI_INVOLVED_MEDIATELY;
+    }
+
+    // CallSite called_instr(cr.first);
+    // errs() << *cr.first << "\n";
+
+    // CallSite called_instr2(cr.first);
+    // errs() << "Te: " << calleescaller[called_instr2] << "\n";
+    // errs() << *called_instr.getInstruction() << "\n---\n";
+  }
+
+  /*
   ExplorationState res_es = SEQUENTIAL;
   for (const BasicBlock &bb : *f) {
     const ExplorationState& es = explore_bb(&bb);
@@ -74,15 +102,21 @@ MPILabelling::explore_function(const Function *f) {
 
     // NOTE: continue inspecting other functions to cover all calls.
   }
+  */
 
   fn_labels[f] = res_es; // set the resulting status
   return res_es;
+}
+
+void MPILabelling::explore_inst(Instruction const *inst, Instruction const *caller) {
 }
 
 MPILabelling::ExplorationState
 MPILabelling::explore_bb(const BasicBlock *bb) {
 
   ExplorationState res_es = SEQUENTIAL;
+
+  /*
   std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
   for (CallInst *call_inst : call_insts) {
     Function *called_fn = call_inst->getCalledFunction();
@@ -99,12 +133,14 @@ MPILabelling::explore_bb(const BasicBlock *bb) {
       mpi_affected_calls[bb].push_back({ call_inst, MPICallType::INDIRECT });
     }
   }
+  */
 
   return res_es;
 }
 
 CallInst * MPILabelling::get_unique_call(StringRef name) const {
 
+  /*
   auto search = mpi_calls.find(name);
   if (search == mpi_calls.end()) {
     return nullptr;
@@ -114,6 +150,8 @@ CallInst * MPILabelling::get_unique_call(StringRef name) const {
   assert(calls.size() == 1);
 
   return calls[0];
+  */
+  return nullptr;
 }
 
 bool MPILabelling::is_sequential(Function const *f) const {
@@ -130,6 +168,7 @@ bool MPILabelling::does_invoke_call(
     StringRef name
 ) const {
 
+  /*
   for (const BasicBlock &bb : *f) {
     auto it = mpi_affected_calls.find(&bb);
     assert (it != mpi_affected_calls.end()); // TODO: is it correct?
@@ -143,6 +182,7 @@ bool MPILabelling::does_invoke_call(
       }
     }
   }
+  */
   return false;
 }
 
@@ -150,6 +190,7 @@ std::vector<CallInst *>
 MPILabelling::get_indirect_mpi_calls(Function const *f) const {
 
   std::vector<CallInst *> indirect_calls;
+  /*
   for (const BasicBlock &bb : *f) {
     auto it = mpi_affected_calls.find(&bb);
     assert (it != mpi_affected_calls.end()); // TODO: is it correct?
@@ -161,6 +202,7 @@ MPILabelling::get_indirect_mpi_calls(Function const *f) const {
       }
     }
   }
+  */
 
   return indirect_calls;
 }

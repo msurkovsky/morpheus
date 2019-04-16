@@ -37,13 +37,16 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &mam) {
 
   assert(main_fn && "No main function within the module.");
 
-  FunctionAnalysisManager &fam = mam.getResult<FunctionAnalysisManagerModuleProxy>(m).getManager();
-  fam.registerPass([]() { return MPILabellingAnalysis(); });
+  // TODO: this does not work!! -- causes run-time error
+  // FunctionAnalysisManager &fam = mam.getResult<FunctionAnalysisManagerModuleProxy>(m).getManager();
+  // fam.registerPass([]() { return MPILabellingAnalysis(); });
+  // auto res = fam.getCachedResult<MPILabellingAnalysis>(*main_fn);
 
-  auto res = fam.getResult<MPILabellingAnalysis>(*main_fn);
   // MPILabellingAnalysis la;
-  // LabellingResult lr = la.run(*main_fn, fam);
+  MPILabelling res(*main_fn); // This does work
 
+  Instruction *i = res.get_unique_call("MPI_Finalize");
+  errs() << *i << "\n";
   // errs() << "========\n";
 
   // FunctionAnalysisManager fam;

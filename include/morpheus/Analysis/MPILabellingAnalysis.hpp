@@ -40,22 +40,22 @@ namespace llvm {
       MPI_INVOLVED_MEDIATELY,
     };
 
-    using CalleeCallerRM = std::pair<CallSite, CallSite>;
-    // TODO: a mapping of type Callee->Caller of InstCall both of them
-    using FunctionLabels = DenseMap<Function const *, ExplorationState>;
-    using CalleeCaller = DenseMap<CallSite, int>;
+    // using CallTrack = std::forward_list<Instruction *>;
 
+    using FunctionLabels = DenseMap<Function const *, ExplorationState>;
     using MPICalls = DenseMap<StringRef, std::vector<CallSite>>;
 
     // using  = std::pair<CallSite, MPICallType>; // TODO: come up with a name for this type
 
     // Storage for MPI affected calls withing basic block
+
+    // TODO: maybe store the list of iterator points ... than I can go until "checkpoint"
     using BBCalls = DenseMap<BasicBlock const *, std::vector<std::pair<CallSite, MPICallType>>>;
 
     FunctionLabels fn_labels;
     MPICalls mpi_calls;
-    BBCalls mpi_affected_calls;
-    CalleeCaller calleescaller;
+
+    BBCalls mpi_affected_bblocks;
 
     Function &root_fn;
     std::unique_ptr<CallGraph> cg;
@@ -67,7 +67,7 @@ namespace llvm {
     MPILabelling(MPILabelling &&labelling); // TODO: maybe use a default implementation
 
     // TODO: review
-    CallInst * get_unique_call(StringRef name) const;
+    Instruction *get_unique_call(StringRef name) const;
     bool is_sequential(Function const *f) const;
     bool is_mpi_involved(Function const *f) const;
     bool does_invoke_call(Function const *f, StringRef name) const;

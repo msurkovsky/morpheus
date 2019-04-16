@@ -67,30 +67,30 @@ MPILabelling::explore_function(Function const *f) {
   ExplorationState res_es = SEQUENTIAL;
   // for (instr, inner_cgn) in cgn:
   for (const CallGraphNode::CallRecord &cr : *cgn) {
+    ExplorationState inner_es = SEQUENTIAL;
+
     CallSite call_site(cr.first);
-
     Function *called_fn = call_site.getCalledFunction();
-    const ExplorationState &es = explore_function(called_fn);
 
+    const ExplorationState &es = explore_function(called_fn);
     switch(es) {
     case MPI_CALL:
       mpi_calls[called_fn->getName()].push_back(call_site);
-      res_es = MPI_INVOLVED;
+      inner_es = MPI_INVOLVED;
+      mpi_affected_bblocks[call_site->getParent()].emplace_back(call_site, MPICallType::DIRECT);
       break;
     case MPI_INVOLVED:
     case MPI_INVOLVED_MEDIATELY:
-      res_es = MPI_INVOLVED_MEDIATELY;
+      inner_es = MPI_INVOLVED_MEDIATELY;
+      mpi_affected_bblocks[call_site->getParent()].emplace_back(call_site, MPICallType::INDIRECT);
     }
 
-    // CallSite called_instr(cr.first);
-    // errs() << *cr.first << "\n";
-
-    // CallSite called_instr2(cr.first);
-    // errs() << "Te: " << calleescaller[called_instr2] << "\n";
-    // errs() << *called_instr.getInstruction() << "\n---\n";
+    if (res_es < inner_es) {
+      res_es = inner_es;
+    }
   }
 
-  /*
+  /* // NOTE: original version using basic blocks
   ExplorationState res_es = SEQUENTIAL;
   for (const BasicBlock &bb : *f) {
     const ExplorationState& es = explore_bb(&bb);
@@ -138,20 +138,18 @@ MPILabelling::explore_bb(const BasicBlock *bb) {
   return res_es;
 }
 
-CallInst * MPILabelling::get_unique_call(StringRef name) const {
+Instruction *MPILabelling::get_unique_call(StringRef name) const {
 
-  /*
   auto search = mpi_calls.find(name);
   if (search == mpi_calls.end()) {
     return nullptr;
   }
 
-  const std::vector<CallInst *> &calls = search->second;
-  assert(calls.size() == 1);
+  const std::vector<CallSite> &calls = search->second;
+  // TODO: isn't there any support of error messages in llvm infrastructure?
+  assert(calls.size() == 1 && "Expect single call.");
 
-  return calls[0];
-  */
-  return nullptr;
+  return calls[0].getInstruction();
 }
 
 bool MPILabelling::is_sequential(Function const *f) const {

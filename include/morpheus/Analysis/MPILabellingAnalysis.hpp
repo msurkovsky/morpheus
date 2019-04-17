@@ -16,6 +16,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <vector>
+#include <queue>
 
 namespace {
   enum struct MPICallType {
@@ -45,17 +46,15 @@ namespace llvm {
     using FunctionLabels = DenseMap<Function const *, ExplorationState>;
     using MPICalls = DenseMap<StringRef, std::vector<CallSite>>;
 
-    // using  = std::pair<CallSite, MPICallType>; // TODO: come up with a name for this type
 
     // Storage for MPI affected calls withing basic block
-
-    // TODO: maybe store the list of iterator points ... than I can go until "checkpoint"
-    using BBCalls = DenseMap<BasicBlock const *, std::vector<std::pair<CallSite, MPICallType>>>;
+    using MPICheckpoints = std::queue<std::pair<BasicBlock::iterator, MPICallType>>;
+    using BBCheckpoints = DenseMap<BasicBlock const *, MPICheckpoints>;
 
     FunctionLabels fn_labels;
     MPICalls mpi_calls;
 
-    BBCalls mpi_affected_bblocks;
+    BBCheckpoints mpi_checkpoints;
 
     Function &root_fn;
     std::unique_ptr<CallGraph> cg;
@@ -77,11 +76,7 @@ namespace llvm {
   private:
 
     ExplorationState explore_function(Function const *f);
-
-    ExplorationState explore_bb(BasicBlock const *bb);
-
-    void explore_inst(Instruction const *inst,
-                      Instruction const *caller=nullptr);
+    void save_checkpoint(Instruction *instr, MPICallType call_type);
 
     template<ExplorationState STATE> bool check_status(Function const *f) const {
       auto search = fn_labels.find(f);

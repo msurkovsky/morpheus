@@ -3,7 +3,7 @@
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 
 #include <cassert>
-
+#include <algorithm>
 
 using namespace llvm;
 
@@ -62,10 +62,9 @@ MPILabelling::explore_function(Function const *f) {
   // TODO: => TEST: make a test to simple function calling itself. => it has to end with sequential
   fn_labels[f] = PROCESSING;
 
-  CallGraphNode *cgn = (*cg)[f];
-
   ExplorationState res_es = SEQUENTIAL;
-  // for (instr, inner_cgn) in cgn:
+
+  CallGraphNode *cgn = (*cg)[f];
   for (const CallGraphNode::CallRecord &cr : *cgn) {
     ExplorationState inner_es = SEQUENTIAL;
 
@@ -77,12 +76,12 @@ MPILabelling::explore_function(Function const *f) {
     case MPI_CALL:
       mpi_calls[called_fn->getName()].push_back(call_site);
       inner_es = MPI_INVOLVED;
-      mpi_affected_bblocks[call_site->getParent()].emplace_back(call_site, MPICallType::DIRECT);
+      save_checkpoint(call_site.getInstruction(), MPICallType::DIRECT);
       break;
     case MPI_INVOLVED:
     case MPI_INVOLVED_MEDIATELY:
       inner_es = MPI_INVOLVED_MEDIATELY;
-      mpi_affected_bblocks[call_site->getParent()].emplace_back(call_site, MPICallType::INDIRECT);
+      save_checkpoint(call_site.getInstruction(), MPICallType::INDIRECT);
     }
 
     if (res_es < inner_es) {
@@ -90,52 +89,17 @@ MPILabelling::explore_function(Function const *f) {
     }
   }
 
-  /* // NOTE: original version using basic blocks
-  ExplorationState res_es = SEQUENTIAL;
-  for (const BasicBlock &bb : *f) {
-    const ExplorationState& es = explore_bb(&bb);
-    // NOTE: basic block cannot be directly of MPI_CALL type
-
-    if (res_es < es) {
-      res_es = es;
-    }
-
-    // NOTE: continue inspecting other functions to cover all calls.
-  }
-  */
-
   fn_labels[f] = res_es; // set the resulting status
   return res_es;
 }
 
-void MPILabelling::explore_inst(Instruction const *inst, Instruction const *caller) {
-}
+void MPILabelling::save_checkpoint(Instruction *inst, MPICallType call_type) {
+  assert(CallSite(inst) && "Only call site instruction can be saved.");
 
-MPILabelling::ExplorationState
-MPILabelling::explore_bb(const BasicBlock *bb) {
+  BasicBlock *bb = inst->getParent();
+  assert(bb != nullptr && "Null parent of instruction.");
 
-  ExplorationState res_es = SEQUENTIAL;
-
-  /*
-  std::vector<CallInst *> call_insts = CallFinder<BasicBlock>::find_in(*bb);
-  for (CallInst *call_inst : call_insts) {
-    Function *called_fn = call_inst->getCalledFunction();
-
-    assert(called_fn != nullptr);
-
-    ExplorationState es = explore_function(called_fn);
-    if (es == MPI_CALL) {
-      res_es = MPI_INVOLVED;
-      mpi_calls[called_fn->getName()].push_back(call_inst);
-      mpi_affected_calls[bb].push_back({ call_inst, MPICallType::DIRECT });
-    } else if (es > MPI_CALL) {
-      res_es = ExplorationState::MPI_INVOLVED_MEDIATELY;
-      mpi_affected_calls[bb].push_back({ call_inst, MPICallType::INDIRECT });
-    }
-  }
-  */
-
-  return res_es;
+  mpi_checkpoints[bb].emplace(inst->getIterator(), call_type);
 }
 
 Instruction *MPILabelling::get_unique_call(StringRef name) const {

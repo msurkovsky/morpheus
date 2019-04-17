@@ -1,4 +1,3 @@
-#include "CallFinder.hpp"
 
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 
@@ -29,19 +28,50 @@ MPILabelling::MPILabelling(Function &f)
   explore_function(&f);
 }
 
-// TODO: for both of the follwoing ctor copy/move the inner structres
+MPILabelling::MPILabelling(MPILabelling const &labelling)
+    : root_fn(labelling.root_fn),
+      fn_labels(labelling.fn_labels),
+      mpi_calls(labelling.mpi_calls),
+      bb_mpi_checkpoints(labelling.bb_mpi_checkpoints) {
 
-MPILabelling::MPILabelling(const MPILabelling &labelling)
-    : root_fn(labelling.root_fn) {
-
+  // CG has to be build from scratch
   cg = std::make_unique<CallGraph>(CallGraph(*labelling.root_fn.getParent()));
-
-  // TODO: copy the built structure
 }
 
-// TODO: maybe a default will be OK - CallGraph defines it
-MPILabelling::MPILabelling(MPILabelling &&labelling)
-    : root_fn(labelling.root_fn), cg(std::move(labelling.cg)) { }
+// Public API --------------------------------------------------------------- //
+
+Instruction *MPILabelling::get_unique_call(StringRef name) const {
+
+  auto search = mpi_calls.find(name);
+  if (search == mpi_calls.end()) {
+    return nullptr;
+  }
+
+  std::vector<CallSite> const &calls = search->second;
+  // TODO: isn't there any support of error messages in llvm infrastructure?
+  assert(calls.size() == 1 && "Expect single call.");
+
+  return calls[0].getInstruction();
+}
+
+bool MPILabelling::is_sequential(Function const *f) const {
+  return check_status<SEQUENTIAL>(f);
+}
+
+bool MPILabelling::is_mpi_involved(Function const *f) const {
+  return (check_status<MPI_INVOLVED>(f) ||
+          check_status<MPI_INVOLVED_MEDIATELY>(f));
+}
+
+MPILabelling::MPICheckpoints
+MPILabelling::get_mpi_checkpoints(BasicBlock const *bb) const {
+  auto search = bb_mpi_checkpoints.find(bb);
+  if (search == bb_mpi_checkpoints.end()) {
+    return MPICheckpoints();
+  }
+
+  return search->second;
+}
 
 MPILabelling::ExplorationState
 MPILabelling::explore_function(Function const *f) {
@@ -65,13 +95,13 @@ MPILabelling::explore_function(Function const *f) {
   ExplorationState res_es = SEQUENTIAL;
 
   CallGraphNode *cgn = (*cg)[f];
-  for (const CallGraphNode::CallRecord &cr : *cgn) {
+  for (CallGraphNode::CallRecord const &cr : *cgn) {
     ExplorationState inner_es = SEQUENTIAL;
 
     CallSite call_site(cr.first);
     Function *called_fn = call_site.getCalledFunction();
 
-    const ExplorationState &es = explore_function(called_fn);
+    ExplorationState const &es = explore_function(called_fn);
     switch(es) {
     case MPI_CALL:
       mpi_calls[called_fn->getName()].push_back(call_site);
@@ -99,72 +129,30 @@ void MPILabelling::save_checkpoint(Instruction *inst, MPICallType call_type) {
   BasicBlock *bb = inst->getParent();
   assert(bb != nullptr && "Null parent of instruction.");
 
-  mpi_checkpoints[bb].emplace(inst->getIterator(), call_type);
+  bb_mpi_checkpoints[bb].emplace(inst->getIterator(), call_type);
 }
 
-Instruction *MPILabelling::get_unique_call(StringRef name) const {
 
-  auto search = mpi_calls.find(name);
-  if (search == mpi_calls.end()) {
-    return nullptr;
-  }
-
-  const std::vector<CallSite> &calls = search->second;
-  // TODO: isn't there any support of error messages in llvm infrastructure?
-  assert(calls.size() == 1 && "Expect single call.");
-
-  return calls[0].getInstruction();
-}
-
-bool MPILabelling::is_sequential(Function const *f) const {
-  return check_status<SEQUENTIAL>(f);
-}
-
-bool MPILabelling::is_mpi_involved(Function const *f) const {
-  return (check_status<MPI_INVOLVED>(f) ||
-          check_status<MPI_INVOLVED_MEDIATELY>(f));
-}
-
-bool MPILabelling::does_invoke_call(
+/*
+bool MPILabelling::does_invoke_call( // TODO: this belongs to scope analysis
     Function const *f,
     StringRef name
 ) const {
 
-  /*
-  for (const BasicBlock &bb : *f) {
-    auto it = mpi_affected_calls.find(&bb);
-    assert (it != mpi_affected_calls.end()); // TODO: is it correct?
+  CallGraphNode *cgn = (*cg)[f];
+  for (CallGraphNode::CallRecord const &cr : *cgn) {
+    // auto it = mpi_affected_calls.find(&bb);
+    // assert (it != mpi_affected_calls.end()); // TODO: is it correct?
 
-    const std::vector<std::pair<CallInst *, MPICallType>> &calls = it->second;
-    for (const std::pair<CallInst *, MPICallType> &call_type : calls) {
-      CallInst * inst = call_type.first;
-      StringRef inst_name = inst->getCalledFunction()->getName();
-      if (call_type.second == MPICallType::DIRECT && inst_name == name) {
-        return true;
-      }
-    }
+    // const std::vector<std::pair<CallInst *, MPICallType>> &calls = it->second;
+    // for (const std::pair<CallInst *, MPICallType> &call_type : calls) {
+    //   CallInst * inst = call_type.first;
+    //   StringRef inst_name = inst->getCalledFunction()->getName();
+    //   if (call_type.second == MPICallType::DIRECT && inst_name == name) {
+    //     return true;
+    //   }
+    // }
   }
-  */
   return false;
 }
-
-std::vector<CallInst *>
-MPILabelling::get_indirect_mpi_calls(Function const *f) const {
-
-  std::vector<CallInst *> indirect_calls;
-  /*
-  for (const BasicBlock &bb : *f) {
-    auto it = mpi_affected_calls.find(&bb);
-    assert (it != mpi_affected_calls.end()); // TODO: is it correct?
-
-    const std::vector<std::pair<CallInst *, MPICallType>> &calls = it->second;
-    for (const std::pair<CallInst *, MPICallType> &call_type : calls) {
-      if (call_type.second == MPICallType::INDIRECT) {
-        indirect_calls.push_back(call_type.first);
-      }
-    }
-  }
-  */
-
-  return indirect_calls;
-}
+*/

@@ -1,7 +1,7 @@
 
 //===----------------------------------------------------------------------===//
 //
-// MPILabelingAnalysis (*)
+// MPILabelingAnalysis
 //
 //===----------------------------------------------------------------------===//
 
@@ -28,9 +28,9 @@ namespace {
 
 namespace llvm {
 
-  class MPILabellingAnalysis;
-
   class MPILabelling {
+  public:
+    using MPICheckpoints = std::queue<std::pair<BasicBlock::iterator const, MPICallType>>;
 
   private:
     enum ExplorationState {
@@ -41,20 +41,13 @@ namespace llvm {
       MPI_INVOLVED_MEDIATELY,
     };
 
-    // using CallTrack = std::forward_list<Instruction *>;
-
     using FunctionLabels = DenseMap<Function const *, ExplorationState>;
     using MPICalls = DenseMap<StringRef, std::vector<CallSite>>;
-
-
-    // Storage for MPI affected calls withing basic block
-    using MPICheckpoints = std::queue<std::pair<BasicBlock::iterator, MPICallType>>;
-    using BBCheckpoints = DenseMap<BasicBlock const *, MPICheckpoints>;
+    using MPICheckpointsInBB = DenseMap<BasicBlock const *, MPICheckpoints>;
 
     FunctionLabels fn_labels;
     MPICalls mpi_calls;
-
-    BBCheckpoints mpi_checkpoints;
+    MPICheckpointsInBB bb_mpi_checkpoints;
 
     Function &root_fn;
     std::unique_ptr<CallGraph> cg;
@@ -63,15 +56,14 @@ namespace llvm {
 
     explicit MPILabelling(Function &f);
     MPILabelling(const MPILabelling &labelling);
-    MPILabelling(MPILabelling &&labelling); // TODO: maybe use a default implementation
+    MPILabelling(MPILabelling &&labelling) = default;
 
-    // TODO: review
     Instruction *get_unique_call(StringRef name) const;
     bool is_sequential(Function const *f) const;
     bool is_mpi_involved(Function const *f) const;
-    bool does_invoke_call(Function const *f, StringRef name) const;
+    // bool does_invoke_call(Function const *f, StringRef name) const; // TODO: move into scope analysis
 
-    std::vector<CallInst *> get_indirect_mpi_calls(Function const *f) const;
+    MPICheckpoints get_mpi_checkpoints(BasicBlock const *bb) const;
 
   private:
 

@@ -5,8 +5,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MR_MPI_LABELLING_H
-#define MR_MPI_LABELLING_H
+#ifndef MRPH_MPI_LABELLING_H
+#define MRPH_MPI_LABELLING_H
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/StringRef.h"
@@ -49,13 +49,12 @@ namespace llvm {
     MPICalls mpi_calls;
     MPICheckpointsInBB bb_mpi_checkpoints;
 
-    Function &root_fn;
-    std::unique_ptr<CallGraph> cg;
+    std::shared_ptr<CallGraph> cg;
 
   public:
 
-    explicit MPILabelling(Function &f);
-    MPILabelling(const MPILabelling &labelling);
+    explicit MPILabelling(std::shared_ptr<CallGraph> cg);
+    MPILabelling(const MPILabelling &labelling) = default;
     MPILabelling(MPILabelling &&labelling) = default;
 
     Instruction *get_unique_call(StringRef name) const;
@@ -67,7 +66,7 @@ namespace llvm {
 
   private:
 
-    ExplorationState explore_function(Function const *f);
+    ExplorationState explore_cgnode(CallGraphNode const *cgn);
     void save_checkpoint(Instruction *instr, MPICallType call_type);
 
     template<ExplorationState STATE> bool check_status(Function const *f) const {
@@ -88,9 +87,9 @@ namespace llvm {
 
     using Result = MPILabelling;
 
-    Result run (Function &, FunctionAnalysisManager &);
+    Result run (Module &m, ModuleAnalysisManager &mam);
 
   }; // MPILabellingAnalysis
 } // llvm
 
-#endif // MR_MPI_LABELLING_H
+#endif // MRPH_MPI_LABELLING_H

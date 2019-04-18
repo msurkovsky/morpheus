@@ -10,8 +10,9 @@ using namespace llvm;
 // MPILabellingAnalysis
 
 MPILabelling
-MPILabellingAnalysis::run (Function &f, FunctionAnalysisManager &fam) {
-  return MPILabelling(f);
+MPILabellingAnalysis::run (Module &m, ModuleAnalysisManager &mam) {
+
+  return MPILabelling(std::make_shared<CallGraph>(m));
 }
 
 // provide definition of the analysis Key
@@ -21,21 +22,16 @@ AnalysisKey MPILabellingAnalysis::Key;
 // -------------------------------------------------------------------------- //
 // MPILabelling
 
-MPILabelling::MPILabelling(Function &f)
-    : root_fn(f) {
+MPILabelling::MPILabelling(std::shared_ptr<CallGraph> cg)
+    : cg(cg) {
 
-  cg = std::make_unique<CallGraph>(CallGraph(*f.getParent()));
-  explore_function(&f);
-}
-
-MPILabelling::MPILabelling(MPILabelling const &labelling)
-    : root_fn(labelling.root_fn),
-      fn_labels(labelling.fn_labels),
-      mpi_calls(labelling.mpi_calls),
-      bb_mpi_checkpoints(labelling.bb_mpi_checkpoints) {
-
-  // CG has to be build from scratch
-  cg = std::make_unique<CallGraph>(CallGraph(*labelling.root_fn.getParent()));
+  // There is no root node
+  for (const auto &node : *cg) {
+    CallGraphNode const *cgn = node.second.get();
+    if (cgn->getFunction()) { // explore only function node
+      explore_cgnode(cgn);
+    }
+  }
 }
 
 // Public API --------------------------------------------------------------- //
@@ -73,8 +69,12 @@ MPILabelling::get_mpi_checkpoints(BasicBlock const *bb) const {
   return search->second;
 }
 
+// Private methods ---------------------------------------------------------- //
+
 MPILabelling::ExplorationState
-MPILabelling::explore_function(Function const *f) {
+MPILabelling::explore_cgnode(CallGraphNode const *cgn) {
+  Function *f = cgn->getFunction();
+
   auto it = fn_labels.find(f);
   if (it != fn_labels.end()) {
     return it->getSecond();
@@ -94,17 +94,16 @@ MPILabelling::explore_function(Function const *f) {
 
   ExplorationState res_es = SEQUENTIAL;
 
-  CallGraphNode *cgn = (*cg)[f];
   for (CallGraphNode::CallRecord const &cr : *cgn) {
     ExplorationState inner_es = SEQUENTIAL;
 
     CallSite call_site(cr.first);
-    Function *called_fn = call_site.getCalledFunction();
+    CallGraphNode *called_cgn = cr.second;
 
-    ExplorationState const &es = explore_function(called_fn);
+    ExplorationState const &es = explore_cgnode(called_cgn);
     switch(es) {
     case MPI_CALL:
-      mpi_calls[called_fn->getName()].push_back(call_site);
+      mpi_calls[call_site.getCalledFunction()->getName()].push_back(call_site);
       inner_es = MPI_INVOLVED;
       save_checkpoint(call_site.getInstruction(), MPICallType::DIRECT);
       break;

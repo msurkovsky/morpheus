@@ -38,15 +38,15 @@ namespace {
       */
 
 
-      for (auto &inst : res) {
-        errs() << "INST: " << inst << "\n";
+      // for (auto &inst : res) {
+      //   errs() << "INST: " << inst << "\n";
         // if (&inst) {
         //   errs() << "INST: " << inst.getValueID() << "\n";
         //   errs() << "\t >>> " << inst << "\n";
         // } else {
         //   errs() << "AAA\n";
         // }
-      }
+      // }
 
       // auto it = res.begin();
       // errs() << "IT: " << *it << "\n";

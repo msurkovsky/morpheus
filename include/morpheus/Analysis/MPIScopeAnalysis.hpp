@@ -8,13 +8,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MR_MPI_SCOPE_H
-#define MR_MPI_SCOPE_H
+#ifndef MRPH_MPI_SCOPE_H
+#define MRPH_MPI_SCOPE_H
+
+#include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 
 #include "llvm/ADT/ilist_iterator.h"
 #include "llvm/ADT/simple_ilist.h"
 #include "llvm/IR/PassManager.h"
 
+#include <forward_list>
 #include <vector>
 #include <string>
 #include <iterator>
@@ -127,17 +130,27 @@ namespace llvm {
   // TODO: does it make sense to implement ilist_node_with_parent (as same as basic block?)
   class MPIScope {
 
-    Module &analyzed_m;
-    std::unique_ptr<CallGraph> cg;
-    std::unique_ptr<MPILabeling> labelling;
+    std::shared_ptr<CallGraph> cg;
+    std::unique_ptr<MPILabelling> labelling;
 
   public:
+    struct CallTrack {
+      CallSite cs;
+      CallTrack *caller;
+
+      explicit CallTrack(CallSite cs) : cs(cs) { }
+      CallTrack(const CallTrack &ct) = delete;
+      CallTrack(CallTrack &&ct) : cs(std::move(ct.cs))
+    };
+
+    // TODO: add mapping from an Instruction* to CallsTrack
     using iterator = ScopeIterator;
 
-    explicit MPIScope(Module &m);
+    explicit MPIScope(std::shared_ptr<CallGraph> &cg);
     MPIScope(const MPIScope &scope);
     MPIScope(MPIScope &&scope) = default;
 
+    /*
     // TODO: review
     ScopeIterator begin() {
       return ScopeIterator(init_call, finalize_call).begin();
@@ -146,6 +159,7 @@ namespace llvm {
     ScopeIterator end()   {
       return ScopeIterator(init_call, finalize_call).end();
     }
+    */
 
     // ScopeIterator::const_iterator begin() const { iter.begin(); }
     // ScopeIterator::const_iterator end() const { iter.end(); }
@@ -156,6 +170,10 @@ namespace llvm {
     // Well, in the end I need a kind of navigation trough the scope. Therefore, a set of queries needs to be defined.
 
     // TODO: define it as an iterator over "unfolded" scope
+
+  private:
+    CallsTrack process_cgnode(CallGraphNode const *cgn, CallsTrack &track);
+
   }; // MPIScope
 
 
@@ -165,10 +183,10 @@ namespace llvm {
 
   public:
 
-    using Result = MPIScopeResult;
+    using Result = MPIScope;
 
-    MPIScopeResult run (Module &, ModuleAnalysisManager &);
+    MPIScope run (Module &, ModuleAnalysisManager &);
   }; // MPIScopeAnalysis
 } // llvm
 
-#endif // MR_MPI_SCOPE_H
+#endif // MRPH_MPI_SCOPE_H

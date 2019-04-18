@@ -53,7 +53,7 @@ namespace llvm {
 
   public:
 
-    explicit MPILabelling(std::shared_ptr<CallGraph> cg);
+    explicit MPILabelling(std::shared_ptr<CallGraph> &cg);
     MPILabelling(const MPILabelling &labelling) = default;
     MPILabelling(MPILabelling &&labelling) = default;
 

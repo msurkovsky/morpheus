@@ -12,7 +12,8 @@ using namespace llvm;
 MPILabelling
 MPILabellingAnalysis::run (Module &m, ModuleAnalysisManager &mam) {
 
-  return MPILabelling(std::make_shared<CallGraph>(m));
+  std::shared_ptr<CallGraph> cg = std::make_shared<CallGraph>(m);
+  return MPILabelling(cg);
 }
 
 // provide definition of the analysis Key
@@ -22,7 +23,7 @@ AnalysisKey MPILabellingAnalysis::Key;
 // -------------------------------------------------------------------------- //
 // MPILabelling
 
-MPILabelling::MPILabelling(std::shared_ptr<CallGraph> cg)
+MPILabelling::MPILabelling(std::shared_ptr<CallGraph> &cg)
     : cg(cg) {
 
   // There is no root node

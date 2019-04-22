@@ -11,6 +11,7 @@
 #ifndef MRPH_MPI_SCOPE_H
 #define MRPH_MPI_SCOPE_H
 
+#include "morpheus/ADT/ParentPointerNode.hpp"
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 
 #include "llvm/ADT/ilist_iterator.h"
@@ -134,14 +135,9 @@ namespace llvm {
     std::unique_ptr<MPILabelling> labelling;
 
   public:
-    struct CallTrack {
-      CallSite cs;
-      CallTrack *caller;
+    using CallNode = PPNode<CallSite>; // TODO: instead of using CallSite rather use pointer to Instruction! Then I can easily create an empty CallNode.
 
-      explicit CallTrack(CallSite cs) : cs(cs) { }
-      CallTrack(const CallTrack &ct) = delete;
-      CallTrack(CallTrack &&ct) : cs(std::move(ct.cs))
-    };
+    using CallsTrack = std::shared_ptr<CallNode>;
 
     // TODO: add mapping from an Instruction* to CallsTrack
     using iterator = ScopeIterator;
@@ -172,7 +168,7 @@ namespace llvm {
     // TODO: define it as an iterator over "unfolded" scope
 
   private:
-    CallsTrack process_cgnode(CallGraphNode const *cgn, CallsTrack &track);
+    CallsTrack process_call_record(CallGraphNode::CallRecord const &cr, const CallsTrack &track);
 
   }; // MPIScope
 

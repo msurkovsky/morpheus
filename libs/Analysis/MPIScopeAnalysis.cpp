@@ -48,3 +48,19 @@ MPIScope::MPIScope(std::shared_ptr<CallGraph> &cg)
 
   // TODO: call explore cg
 }
+
+// private members ---------------------------------------------------------- //
+
+MPIScope::CallsTrack
+MPIScope::process_call_record(CallGraphNode::CallRecord const &cr, const CallsTrack &track) {
+
+  CallSite call_site(cr.first);
+  CallsTrack res_track = CallNode::create(call_site);
+  res_track->parent = track;
+
+  CallGraphNode *called_cgn = cr.second;
+  for (CallGraphNode::CallRecord const &cr : *called_cgn) {
+    process_call_record(cr, res_track);
+  }
+  return res_track;
+}

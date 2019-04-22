@@ -46,21 +46,54 @@ MPIScope::MPIScope(std::shared_ptr<CallGraph> &cg)
     : cg(cg),
       labelling(std::make_unique<MPILabelling>(cg)) {
 
-  // TODO: call explore cg
+  for (const auto &node : *cg) {
+    CallGraphNode const *cgn = node.second.get();
+    if (cgn->getFunction()) {
+      if (cgn->getFunction()->getName() == "main") { // TODO: remove problem when some functions are explored and their "parent" is nullptr already -> TODO: implement less then on CallsTrack comparison to say when override marked function
+
+        errs() << "FF: " << cgn->getFunction()->getName() << "\n";
+        for (const CallGraphNode::CallRecord &cr : *cgn) {
+          if (cr.second->getFunction()) { // process only non-external nodes
+            CallsTrack ct = CallNode::create();
+            process_call_record(cr, ct);
+          }
+        }
+
+      }
+    }
+  }
+
+  Instruction *inst = labelling->get_unique_call("MPI_Finalize");
+  errs() << *inst << "\n";
+
+  auto it = instructions_call_track.find(inst);
+  if (it != instructions_call_track.end()) {
+    CallsTrack ct = it->getSecond();
+    errs() << *ct->parent->data << "\n";
+  }
 }
 
 // private members ---------------------------------------------------------- //
 
 MPIScope::CallsTrack
-MPIScope::process_call_record(CallGraphNode::CallRecord const &cr, const CallsTrack &track) {
+MPIScope::process_call_record(const CallGraphNode::CallRecord &cr, const CallsTrack &track) {
+  Instruction *inst = CallSite(cr.first).getInstruction();
+  auto it = instructions_call_track.find(inst);
+  if (it != instructions_call_track.end()) {
+    return it->getSecond();
+  }
 
-  CallSite call_site(cr.first);
-  CallsTrack res_track = CallNode::create(call_site);
+  CallsTrack res_track = CallNode::create(inst);
   res_track->parent = track;
+  instructions_call_track[inst] = res_track; // TODO: reason this storage (prevent recursive calls but is it ok?)
 
   CallGraphNode *called_cgn = cr.second;
   for (CallGraphNode::CallRecord const &cr : *called_cgn) {
-    process_call_record(cr, res_track);
+    if (cr.second->getFunction()) { // process only non-external nodes
+      errs() << "Last: " << cr.second->getFunction()->getName() << "\n";
+      process_call_record(cr, res_track);
+    }
   }
+
   return res_track;
 }

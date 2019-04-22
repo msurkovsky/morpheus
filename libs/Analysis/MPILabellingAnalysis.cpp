@@ -95,7 +95,7 @@ MPILabelling::explore_cgnode(CallGraphNode const *cgn) {
 
   ExplorationState res_es = SEQUENTIAL;
 
-  for (CallGraphNode::CallRecord const &cr : *cgn) {
+  for (const CallGraphNode::CallRecord &cr : *cgn) {
     ExplorationState inner_es = SEQUENTIAL;
 
     CallSite call_site(cr.first);

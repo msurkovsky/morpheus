@@ -131,15 +131,21 @@ namespace llvm {
   // TODO: does it make sense to implement ilist_node_with_parent (as same as basic block?)
   class MPIScope {
 
+  public:
+
+    using CallNode = PPNode<Instruction *>;
+    using CallsTrack = std::shared_ptr<CallNode>;
+
+  private:
+
     std::shared_ptr<CallGraph> cg;
     std::unique_ptr<MPILabelling> labelling;
 
+    DenseMap<Instruction const *, CallsTrack> instructions_call_track;
+
   public:
-    using CallNode = PPNode<CallSite>; // TODO: instead of using CallSite rather use pointer to Instruction! Then I can easily create an empty CallNode.
 
-    using CallsTrack = std::shared_ptr<CallNode>;
-
-    // TODO: add mapping from an Instruction* to CallsTrack
+    // TODO: add mapping from an Instruction* to CallsTrack (22.4 it's been added above)
     using iterator = ScopeIterator;
 
     explicit MPIScope(std::shared_ptr<CallGraph> &cg);
@@ -168,7 +174,7 @@ namespace llvm {
     // TODO: define it as an iterator over "unfolded" scope
 
   private:
-    CallsTrack process_call_record(CallGraphNode::CallRecord const &cr, const CallsTrack &track);
+    CallsTrack process_call_record(const CallGraphNode::CallRecord &cr, const CallsTrack &track);
 
   }; // MPIScope
 

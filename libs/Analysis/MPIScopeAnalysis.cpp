@@ -46,20 +46,14 @@ MPIScope::MPIScope(std::shared_ptr<CallGraph> &cg)
     : cg(cg),
       labelling(std::make_unique<MPILabelling>(cg)) {
 
+  cg->print(errs());
+  /*
   for (const auto &node : *cg) {
     CallGraphNode const *cgn = node.second.get();
     if (cgn->getFunction()) {
-      if (cgn->getFunction()->getName() == "main") { // TODO: remove problem when some functions are explored and their "parent" is nullptr already -> TODO: implement less then on CallsTrack comparison to say when override marked function
-
         errs() << "FF: " << cgn->getFunction()->getName() << "\n";
-        for (const CallGraphNode::CallRecord &cr : *cgn) {
-          if (cr.second->getFunction()) { // process only non-external nodes
-            CallsTrack ct = CallNode::create();
-            process_call_record(cr, ct);
-          }
-        }
-
-      }
+        CallsTrack ct = CallNode::create();
+        process_call_record(cgn, ct);
     }
   }
 
@@ -69,14 +63,21 @@ MPIScope::MPIScope(std::shared_ptr<CallGraph> &cg)
   auto it = instructions_call_track.find(inst);
   if (it != instructions_call_track.end()) {
     CallsTrack ct = it->getSecond();
-    errs() << *ct->parent->data << "\n";
+    errs() << ct->metadata <<  " -> " << ct->parent->metadata << "\n";
   }
+  */
 }
 
 // private members ---------------------------------------------------------- //
 
 MPIScope::CallsTrack
-MPIScope::process_call_record(const CallGraphNode::CallRecord &cr, const CallsTrack &track) {
+MPIScope::process_call_record(CallGraphNode const *cgn, const CallsTrack &track) {
+
+
+
+  return CallNode::create();
+
+  /*
   Instruction *inst = CallSite(cr.first).getInstruction();
   auto it = instructions_call_track.find(inst);
   if (it != instructions_call_track.end()) {
@@ -85,15 +86,17 @@ MPIScope::process_call_record(const CallGraphNode::CallRecord &cr, const CallsTr
 
   CallsTrack res_track = CallNode::create(inst);
   res_track->parent = track;
+  res_track->metadata = CallSite(inst).getCalledFunction()->getName();
   instructions_call_track[inst] = res_track; // TODO: reason this storage (prevent recursive calls but is it ok?)
 
   CallGraphNode *called_cgn = cr.second;
-  for (CallGraphNode::CallRecord const &cr : *called_cgn) {
-    if (cr.second->getFunction()) { // process only non-external nodes
-      errs() << "Last: " << cr.second->getFunction()->getName() << "\n";
-      process_call_record(cr, res_track);
+  for (CallGraphNode::CallRecord const &inner_cr : *called_cgn) {
+    if (inner_cr.second->getFunction()) { // process only non-external nodes
+      errs() << "Last: " << inner_cr.second->getFunction()->getName() << "\n";
+      process_call_record(inner_cr, res_track);
     }
   }
 
   return res_track;
+  */
 }

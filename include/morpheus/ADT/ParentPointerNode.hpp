@@ -9,6 +9,7 @@
 #define MRPH_PPNODE
 
 #include <memory>
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/raw_ostream.h"
 
 template<typename T>
@@ -18,6 +19,7 @@ class PPNode {
 public:
   T data;
   std::shared_ptr<PPNode<T>> parent;
+  llvm::StringRef metadata = "X";
 
   explicit PPNode(const T &data) : data(data) { }
   PPNode(PPNode &&node) = default;

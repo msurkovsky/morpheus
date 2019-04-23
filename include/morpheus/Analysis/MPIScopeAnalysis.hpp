@@ -174,7 +174,7 @@ namespace llvm {
     // TODO: define it as an iterator over "unfolded" scope
 
   private:
-    CallsTrack process_call_record(const CallGraphNode::CallRecord &cr, const CallsTrack &track);
+    CallsTrack process_call_record(CallGraphNode const *cgn, const CallsTrack &track);
 
   }; // MPIScope
 

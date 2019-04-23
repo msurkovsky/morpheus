@@ -1,6 +1,7 @@
 
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
+#include "llvm/Analysis/ModuleSummaryAnalysis.h"
 
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
@@ -74,6 +75,7 @@ llvmGetPassPluginInfo() {
       PB.registerPipelineParsingCallback(
         [](StringRef PassName, ModulePassManager &MPM, ArrayRef<PassBuilder::PipelineElement>) {
           if (PassName == "tag-rank-pass") {
+            MPM.addPass(RequireAnalysisPass<ModuleSummaryIndexAnalysis, Module>());
             MPM.addPass(TagRankPass());
             return true;
           }

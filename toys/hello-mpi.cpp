@@ -11,6 +11,10 @@ void do_sth() {
   // do something
 }
 
+void unreachable_fn() {
+  // do something
+}
+
 int main (int argc, char *argv[]) {
   MPI_Init(&argc, &argv);
 

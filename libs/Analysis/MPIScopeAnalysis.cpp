@@ -3,7 +3,9 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Analysis/CallGraph.h"
+#include "llvm/Analysis/ModuleSummaryAnalysis.h"
 #include "llvm/IR/CallSite.h" // TODO: remove
+#include "llvm/IR/ModuleSummaryIndex.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cassert>
@@ -28,6 +30,23 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &mam) {
   // MPILabellingAnalysis la;
 
   std::shared_ptr<CallGraph> cg = std::make_shared<CallGraph>(m);
+
+
+  ModuleSummaryIndex &msi = mam.getResult<ModuleSummaryIndexAnalysis>(m);
+  FunctionSummary fs = msi.calculateCallGraphRoot();
+
+  auto calls = fs.calls();
+  errs() << "# calls: " << calls.size() << "\n";
+  for (auto call : calls) {
+    errs() << "Call: " << call.first.name() << "\n";
+    // << call.first.getRef()->second.getOriginalName() << "\n";
+    // auto lst = call.first.getSummaryList();
+    // for (auto &l : lst) {
+    //   errs() << l->getOriginalName() << "\n";
+    //   // errs() << *l->getBaseObject() << "\n";
+    // }
+    errs() << "\n";
+  }
 
   // MPILabelling labelling(cg);
   // Instruction *i = labelling.get_unique_call("MPI_Finalize");

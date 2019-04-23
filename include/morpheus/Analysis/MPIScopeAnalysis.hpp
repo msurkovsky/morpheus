@@ -17,10 +17,13 @@
 #include "llvm/ADT/ilist_iterator.h"
 #include "llvm/ADT/simple_ilist.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/IR/ModuleSummaryIndex.h"
 
-#include <forward_list>
-#include <vector>
 #include <string>
+#include <forward_list>
+#include <optional>
+#include <vector>
+#include <map>
 #include <iterator>
 
 namespace llvm {
@@ -133,22 +136,23 @@ namespace llvm {
 
   public:
 
-    using CallNode = PPNode<Instruction *>;
+    using CallNode = PPNode<std::pair<std::optional<Instruction *>, Function *>>;
     using CallsTrack = std::shared_ptr<CallNode>;
 
   private:
+    ModuleSummaryIndex &index;
 
     std::shared_ptr<CallGraph> cg;
     std::unique_ptr<MPILabelling> labelling;
 
-    DenseMap<Instruction const *, CallsTrack> instructions_call_track;
+    std::map<Instruction const *, CallsTrack> instructions_call_track; // TODO: there can be more than one calls track (because of possibility that there is more than one root node)
 
   public:
 
     // TODO: add mapping from an Instruction* to CallsTrack (22.4 it's been added above)
     using iterator = ScopeIterator;
 
-    explicit MPIScope(std::shared_ptr<CallGraph> &cg);
+    explicit MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg);
     MPIScope(const MPIScope &scope);
     MPIScope(MPIScope &&scope) = default;
 
@@ -174,7 +178,7 @@ namespace llvm {
     // TODO: define it as an iterator over "unfolded" scope
 
   private:
-    CallsTrack process_call_record(CallGraphNode const *cgn, const CallsTrack &track);
+    CallsTrack process_call_record(const std::unique_ptr<CallGraphNode> &cgn, const CallsTrack &track);
 
   }; // MPIScope
 

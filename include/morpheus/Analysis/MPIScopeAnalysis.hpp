@@ -16,14 +16,10 @@
 
 #include "llvm/ADT/ilist_iterator.h"
 #include "llvm/ADT/simple_ilist.h"
-#include "llvm/IR/PassManager.h"
 #include "llvm/IR/ModuleSummaryIndex.h"
 
-#include <string>
-#include <forward_list>
 #include <optional>
-#include <vector>
-#include <map>
+#include <unordered_map>
 #include <iterator>
 
 namespace llvm {
@@ -133,27 +129,29 @@ namespace llvm {
 
   // TODO: does it make sense to implement ilist_node_with_parent (as same as basic block?)
   class MPIScope {
+    using VisitedNodes = std::unordered_map<CallGraphNode const *, bool>;
+
+    ModuleSummaryIndex &index;
+    CallGraph &cg;
+    MPILabelling &labelling;
 
   public:
-
-    using CallNode = PPNode<std::pair<std::optional<Instruction *>, Function *>>;
+    using CallNodeDataT = std::pair<std::optional<Instruction *>, Function *>;
+    using CallNode = PPNode<CallNodeDataT>;
     using CallsTrack = std::shared_ptr<CallNode>;
 
   private:
-    ModuleSummaryIndex &index;
+    friend raw_ostream &operator<< (raw_ostream &out, const CallNodeDataT &data);
 
-    std::shared_ptr<CallGraph> cg;
-    std::unique_ptr<MPILabelling> labelling;
-
-    std::map<Instruction const *, CallsTrack> instructions_call_track; // TODO: there can be more than one calls track (because of possibility that there is more than one root node)
+    std::unordered_map<Instruction const *, CallsTrack> instruction_calls_track;
 
   public:
 
     // TODO: add mapping from an Instruction* to CallsTrack (22.4 it's been added above)
     using iterator = ScopeIterator;
 
-    explicit MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg);
-    MPIScope(const MPIScope &scope);
+    explicit MPIScope(ModuleSummaryIndex &index, MPILabelling &labelling, CallGraph &cg);
+    MPIScope(const MPIScope &scope) = delete;
     MPIScope(MPIScope &&scope) = default;
 
     /*
@@ -178,10 +176,9 @@ namespace llvm {
     // TODO: define it as an iterator over "unfolded" scope
 
   private:
-    CallsTrack process_call_record(const std::unique_ptr<CallGraphNode> &cgn, const CallsTrack &track);
+    void process_cgnode(CallGraphNode const *cgn, const CallsTrack &track, VisitedNodes &visited);
 
   }; // MPIScope
-
 
   class MPIScopeAnalysis : public AnalysisInfoMixin<MPIScopeAnalysis> {
     static AnalysisKey Key;
@@ -193,6 +190,7 @@ namespace llvm {
 
     MPIScope run (Module &, ModuleAnalysisManager &);
   }; // MPIScopeAnalysis
+
 } // llvm
 
 #endif // MRPH_MPI_SCOPE_H

@@ -16,6 +16,7 @@
 
 #include "llvm/ADT/ilist_iterator.h"
 #include "llvm/ADT/simple_ilist.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/ModuleSummaryIndex.h"
 
@@ -133,10 +134,11 @@ namespace llvm {
 
   // TODO: does it make sense to implement ilist_node_with_parent (as same as basic block?)
   class MPIScope {
+    using InnerCallNode = std::pair<std::optional<Instruction *>, Function *>;
+    friend raw_ostream &operator<< (raw_ostream &out, const InnerCallNode &inode);
 
   public:
-
-    using CallNode = PPNode<std::pair<std::optional<Instruction *>, Function *>>;
+    using CallNode = PPNode<InnerCallNode>;
     using CallsTrack = std::shared_ptr<CallNode>;
 
   private:
@@ -145,7 +147,8 @@ namespace llvm {
     std::shared_ptr<CallGraph> cg;
     std::unique_ptr<MPILabelling> labelling;
 
-    std::map<Instruction const *, CallsTrack> instructions_call_track; // TODO: there can be more than one calls track (because of possibility that there is more than one root node)
+    // std::map<Instruction const *, CallsTrack> instructions_call_track; // TODO: there can be more than one calls track (because of possibility that there is more than one root node)
+    MapVector<Instruction const *, CallsTrack> instruction_calls_track;
 
   public:
 
@@ -178,10 +181,9 @@ namespace llvm {
     // TODO: define it as an iterator over "unfolded" scope
 
   private:
-    CallsTrack process_call_record(const std::unique_ptr<CallGraphNode> &cgn, const CallsTrack &track);
+    void process_cgnode(const CallGraphNode *cgn, const CallsTrack &track);
 
   }; // MPIScope
-
 
   class MPIScopeAnalysis : public AnalysisInfoMixin<MPIScopeAnalysis> {
     static AnalysisKey Key;
@@ -193,6 +195,7 @@ namespace llvm {
 
     MPIScope run (Module &, ModuleAnalysisManager &);
   }; // MPIScopeAnalysis
+
 } // llvm
 
 #endif // MRPH_MPI_SCOPE_H

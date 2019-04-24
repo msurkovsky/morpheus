@@ -12,6 +12,13 @@
 #include <cassert>
 #include <string>
 
+namespace llvm {
+  raw_ostream &operator<< (raw_ostream &out, const MPIScope::InnerCallNode &inode) {
+    out << inode.second->getName();
+    return out;
+  }
+}
+
 using namespace llvm;
 
 // -------------------------------------------------------------------------- //
@@ -80,12 +87,18 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
     for (const auto &node : *cg) {
       Function *fn = node.second->getFunction();
       if (fn && fn_name == fn->getName()) { // process only root nodes
-        errs() << "Processing node: " << fn_name << "\n";
-        process_call_record(node.second, CallNode::create({std::nullopt, fn}));
+        errs() << "FN: " << fn_name << "\n";
+        process_cgnode(node.second.get(), CallNode::create({std::nullopt, fn}));
       }
     }
   }
-  cg->print(errs());
+
+  // Testing print
+  for (auto &p : instruction_calls_track) {
+    CallsTrack &ct = p.second;
+    errs() << *p.first << "(" << p.first << ") - [" << *ct << "]\n";
+  }
+
   /*
   for (const auto &node : *cg) {
     CallGraphNode const *cgn = node.second.get();
@@ -109,11 +122,19 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
 
 // private members ---------------------------------------------------------- //
 
-MPIScope::CallsTrack
-MPIScope::process_call_record(const std::unique_ptr<CallGraphNode> &cgn, const CallsTrack &track) {
+void MPIScope::process_cgnode(const CallGraphNode *cgn, const CallsTrack &track) {
 
-  return CallNode::create(track->data);
-  // return CallNode::create();
+  for (const CallGraphNode::CallRecord &cr : *cgn) {
+    Function *fn = cr.second->getFunction();
+    if (fn) { // process only non-external nodes
+      Instruction *inst = CallSite(cr.first).getInstruction();
+      CallsTrack ct = CallNode::create({inst, fn});
+      ct->parent = track;
+
+      instruction_calls_track.insert({inst, ct});
+      process_cgnode(cr.second, ct);
+    }
+  }
 
   /*
   Instruction *inst = CallSite(cr.first).getInstruction();

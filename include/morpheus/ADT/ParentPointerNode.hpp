@@ -23,12 +23,11 @@ public:
 
   explicit PPNode(const T &data) : data(data) { }
   PPNode(PPNode &&node) = default;
-  PPNode() = default;
+  PPNode() = delete;
   PPNode(const PPNode &node) = delete;
 
-  template<typename... ArgsT>
-  static std::shared_ptr<PPNode<T>> create(ArgsT&&... args) {
-    return std::make_shared<PPNode<T>>(std::forward<ArgsT>(args)...);
+  static std::shared_ptr<PPNode<T>> create(const T &data) {
+    return std::make_shared<PPNode<T>>(data);
   }
 };
 

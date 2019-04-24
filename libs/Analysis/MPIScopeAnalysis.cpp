@@ -8,6 +8,7 @@
 #include "llvm/IR/ModuleSummaryIndex.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <algorithm>
 #include <cassert>
 #include <string>
 
@@ -31,28 +32,13 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &mam) {
 
   std::shared_ptr<CallGraph> cg = std::make_shared<CallGraph>(m);
 
-
-  ModuleSummaryIndex &msi = mam.getResult<ModuleSummaryIndexAnalysis>(m);
-  FunctionSummary fs = msi.calculateCallGraphRoot();
-
-  auto calls = fs.calls();
-  errs() << "# calls: " << calls.size() << "\n";
-  for (auto call : calls) {
-    errs() << "Call: " << call.first.name() << "\n";
-    // << call.first.getRef()->second.getOriginalName() << "\n";
-    // auto lst = call.first.getSummaryList();
-    // for (auto &l : lst) {
-    //   errs() << l->getOriginalName() << "\n";
-    //   // errs() << *l->getBaseObject() << "\n";
-    // }
-    errs() << "\n";
-  }
+  ModuleSummaryIndex &index = mam.getResult<ModuleSummaryIndexAnalysis>(m);
 
   // MPILabelling labelling(cg);
   // Instruction *i = labelling.get_unique_call("MPI_Finalize");
   // errs() << *i << "\n";
 
-  return MPIScope(cg);
+  return MPIScope(index, cg);
 }
 
 // provide definition of the analysis Key
@@ -61,10 +47,44 @@ AnalysisKey MPIScopeAnalysis::Key;
 // -------------------------------------------------------------------------- //
 // MPIScope
 
-MPIScope::MPIScope(std::shared_ptr<CallGraph> &cg)
-    : cg(cg),
+MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
+    : index(index),
+      cg(cg),
       labelling(std::make_unique<MPILabelling>(cg)) {
 
+  FunctionSummary cg_root_nodes = index.calculateCallGraphRoot();
+
+  ArrayRef<FunctionSummary::EdgeTy> edges = cg_root_nodes.calls();
+
+  // auto it = cg->begin();
+  // do {
+  //   it = std::search(it, cg->end(),
+  //                    edges.begin(), edges.end(),
+  //                    [](const auto &node, const auto &edge) {
+  //                      Function *f = node.second->getFunction();
+  //                      if (!f) {
+  //                        return false;
+  //                      }
+  //                      // errs() << "f: " << f->getName() << "; name: " << edge.first.name() << "\n";
+  //                      return f->getName() == edge.first.name();
+  //                    });
+
+  //   if (it != cg->end()) {
+  //     errs() << "FF: " << it->second->getFunction()->getName() << "\n";
+  //   }
+  //   it++;
+  // } while (it == cg->end());
+
+  for (const std::pair<ValueInfo, CalleeInfo> &edge : edges) {
+    StringRef fn_name = std::get<ValueInfo>(edge).name();
+    for (const auto &node : *cg) {
+      Function *fn = node.second->getFunction();
+      if (fn && fn_name == fn->getName()) { // process only root nodes
+        errs() << "Processing node: " << fn_name << "\n";
+        process_call_record(node.second, CallNode::create({std::nullopt, fn}));
+      }
+    }
+  }
   cg->print(errs());
   /*
   for (const auto &node : *cg) {
@@ -90,11 +110,10 @@ MPIScope::MPIScope(std::shared_ptr<CallGraph> &cg)
 // private members ---------------------------------------------------------- //
 
 MPIScope::CallsTrack
-MPIScope::process_call_record(CallGraphNode const *cgn, const CallsTrack &track) {
+MPIScope::process_call_record(const std::unique_ptr<CallGraphNode> &cgn, const CallsTrack &track) {
 
-
-
-  return CallNode::create();
+  return CallNode::create(track->data);
+  // return CallNode::create();
 
   /*
   Instruction *inst = CallSite(cr.first).getInstruction();

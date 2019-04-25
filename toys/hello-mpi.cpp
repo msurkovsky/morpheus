@@ -11,6 +11,10 @@ void sink() {
   // do something
 }
 
+void invisible() { // the function ignored by analysis; not root and not reachable from any other
+  invisible();
+}
+
 void do_sth() {
   // do something
   do_sth();

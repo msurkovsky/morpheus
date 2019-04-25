@@ -86,7 +86,9 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
   for (CallGraphNode *cgn : cg_roots) {
     Function *fn = cgn->getFunction();
     errs() << "FN: " << fn->getName() << "\n";
-    process_cgnode(cgn, CallNode::create({std::nullopt, fn})); // TODO: do I work with instruction inside?
+    VisitedNodes vn;
+    vn.reserve(cgn->size());
+    process_cgnode(cgn, CallNode::create({std::nullopt, fn}), vn); // TODO: do I work with instruction inside?
   }
 
   // Testing print
@@ -123,7 +125,13 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
 
 // private members ---------------------------------------------------------- //
 
-void MPIScope::process_cgnode(const CallGraphNode *cgn, const CallsTrack &track) {
+void MPIScope::process_cgnode(CallGraphNode const *cgn, const CallsTrack &track, VisitedNodes &visited) {
+
+  if (visited.count(cgn) == 1) {
+    return;
+  }
+
+  visited[cgn] = true;
 
   for (const CallGraphNode::CallRecord &cr : *cgn) {
     Function *fn = cr.second->getFunction();
@@ -133,7 +141,7 @@ void MPIScope::process_cgnode(const CallGraphNode *cgn, const CallsTrack &track)
       ct->parent = track;
 
       instruction_calls_track.insert({inst, ct});
-      process_cgnode(cr.second, ct);
+      process_cgnode(cr.second, ct, visited);
     }
   }
 

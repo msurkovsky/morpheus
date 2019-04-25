@@ -134,6 +134,7 @@ namespace llvm {
 
   // TODO: does it make sense to implement ilist_node_with_parent (as same as basic block?)
   class MPIScope {
+    using VisitedNodes = std::unordered_map<CallGraphNode const *, bool>;
     using InnerCallNode = std::pair<std::optional<Instruction *>, Function *>;
     friend raw_ostream &operator<< (raw_ostream &out, const InnerCallNode &inode);
 
@@ -181,7 +182,7 @@ namespace llvm {
     // TODO: define it as an iterator over "unfolded" scope
 
   private:
-    void process_cgnode(const CallGraphNode *cgn, const CallsTrack &track);
+    void process_cgnode(CallGraphNode const *cgn, const CallsTrack &track, VisitedNodes &visited);
 
   }; // MPIScope
 

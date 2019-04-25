@@ -10,9 +10,10 @@ void ff () {
 void sink() {
   // do something
 }
+
 void do_sth() {
   // do something
-  sink();
+  do_sth();
 }
 
 void unreachable_fn() {

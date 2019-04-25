@@ -59,38 +59,34 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
       cg(cg),
       labelling(std::make_unique<MPILabelling>(cg)) {
 
-  FunctionSummary cg_root_nodes = index.calculateCallGraphRoot();
+  // use the index to calculate root functions (those which are not called)
+  FunctionSummary root_nodes = index.calculateCallGraphRoot();
+  ArrayRef<FunctionSummary::EdgeTy> edges = root_nodes.calls();
 
-  ArrayRef<FunctionSummary::EdgeTy> edges = cg_root_nodes.calls();
-
-  // auto it = cg->begin();
-  // do {
-  //   it = std::search(it, cg->end(),
-  //                    edges.begin(), edges.end(),
-  //                    [](const auto &node, const auto &edge) {
-  //                      Function *f = node.second->getFunction();
-  //                      if (!f) {
-  //                        return false;
-  //                      }
-  //                      // errs() << "f: " << f->getName() << "; name: " << edge.first.name() << "\n";
-  //                      return f->getName() == edge.first.name();
-  //                    });
-
-  //   if (it != cg->end()) {
-  //     errs() << "FF: " << it->second->getFunction()->getName() << "\n";
-  //   }
-  //   it++;
-  // } while (it == cg->end());
+  // filter the root nodes from the call graph and count number of call instructions
+  unsigned int call_inst_count = 0;
+  std::vector<CallGraphNode *> cg_roots;
+  cg_roots.reserve(edges.size());
 
   for (const std::pair<ValueInfo, CalleeInfo> &edge : edges) {
     StringRef fn_name = std::get<ValueInfo>(edge).name();
     for (const auto &node : *cg) {
-      Function *fn = node.second->getFunction();
-      if (fn && fn_name == fn->getName()) { // process only root nodes
-        errs() << "FN: " << fn_name << "\n";
-        process_cgnode(node.second.get(), CallNode::create({std::nullopt, fn}));
+      CallGraphNode *cgn = node.second.get();
+      Function *fn = cgn->getFunction();
+      if (fn && fn_name == fn->getName()) {
+        cg_roots.push_back(cgn); // store root node
+        call_inst_count += cgn->size(); // add number of called functions from root node
       }
     }
+  }
+
+  // reserve the size of unordered map with instructions pointing to its call track
+  instruction_calls_track.reserve(call_inst_count);
+
+  for (CallGraphNode *cgn : cg_roots) {
+    Function *fn = cgn->getFunction();
+    errs() << "FN: " << fn->getName() << "\n";
+    process_cgnode(cgn, CallNode::create({std::nullopt, fn})); // TODO: do I work with instruction inside?
   }
 
   // Testing print
@@ -98,6 +94,11 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
     CallsTrack &ct = p.second;
     errs() << *p.first << "(" << p.first << ") - [" << *ct << "]\n";
   }
+
+
+  // calculating scope function (TODO:)
+  Instruction *inst = labelling->get_unique_call("MPI_Finalize"); // TODO: should it be only one? For the purspose of simplicity YES!
+  errs() << "\n" << *inst << "\n";
 
   /*
   for (const auto &node : *cg) {

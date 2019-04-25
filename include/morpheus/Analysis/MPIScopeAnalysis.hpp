@@ -24,7 +24,7 @@
 #include <forward_list>
 #include <optional>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <iterator>
 
 namespace llvm {
@@ -147,8 +147,8 @@ namespace llvm {
     std::shared_ptr<CallGraph> cg;
     std::unique_ptr<MPILabelling> labelling;
 
-    // std::map<Instruction const *, CallsTrack> instructions_call_track; // TODO: there can be more than one calls track (because of possibility that there is more than one root node)
-    MapVector<Instruction const *, CallsTrack> instruction_calls_track;
+    std::unordered_map<Instruction const *, CallsTrack> instruction_calls_track; // TODO: there can be more than one calls track (because of possibility that there is more than one root node)
+    // MapVector<Instruction const *, CallsTrack> instruction_calls_track;
 
   public:
 

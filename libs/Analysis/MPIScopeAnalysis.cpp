@@ -109,12 +109,23 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
   errs() << "MPI_Init: " << *ct_init << "; depth: " << ct_init->get_depth() << "\n";
   errs() << "MPI_Fin: " << *ct_finalize << "; depth: " << ct_finalize->get_depth() << "\n";
 
-  CallsTrack &deepr, &shallower;
+  CallsTrack deeper, shallower;
   if (ct_init->get_depth() > ct_finalize->get_depth()) {
-    
+    deeper = ct_init;
+    shallower = ct_finalize;
   } else {
-    
+    deeper = ct_finalize;
+    shallower = ct_init;
   }
+
+  CallsTrack dp = deeper->get_parent();
+  CallsTrack sp = shallower->get_parent();
+  while (dp->get_depth() > sp->get_depth()) {
+    dp = dp->get_parent();
+  }
+  errs() << "DP: " << *dp << "\n"
+         << "SP: " << *sp << "\n";
+  errs() << (dp == sp ? "YES" : "NO");
   /*
   for (const auto &node : *cg) {
     CallGraphNode const *cgn = node.second.get();

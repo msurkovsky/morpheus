@@ -97,11 +97,24 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg)
     errs() << *p.first << "(" << p.first << ") - [" << *ct << "]\n";
   }
 
+  // calculating scope function
+  // NOTE: current implementation counts on singe call of MPI_Init/Finalize.
+  Instruction *mpi_init_call = labelling->get_unique_call("MPI_Init");
+  Instruction *mpi_fin_call = labelling->get_unique_call("MPI_Finalize");
+  errs() << "\n" << *mpi_init_call << "\n" << *mpi_fin_call << "\n";
 
-  // calculating scope function (TODO:)
-  Instruction *inst = labelling->get_unique_call("MPI_Finalize"); // TODO: should it be only one? For the purspose of simplicity YES!
-  errs() << "\n" << *inst << "\n";
+  CallsTrack &ct_init = instruction_calls_track[mpi_init_call];
+  CallsTrack &ct_finalize = instruction_calls_track[mpi_fin_call];
 
+  errs() << "MPI_Init: " << *ct_init << "; depth: " << ct_init->get_depth() << "\n";
+  errs() << "MPI_Fin: " << *ct_finalize << "; depth: " << ct_finalize->get_depth() << "\n";
+
+  CallsTrack &deepr, &shallower;
+  if (ct_init->get_depth() > ct_finalize->get_depth()) {
+    
+  } else {
+    
+  }
   /*
   for (const auto &node : *cg) {
     CallGraphNode const *cgn = node.second.get();
@@ -138,7 +151,7 @@ void MPIScope::process_cgnode(CallGraphNode const *cgn, const CallsTrack &track,
     if (fn) { // process only non-external nodes
       Instruction *inst = CallSite(cr.first).getInstruction();
       CallsTrack ct = CallNode::create({inst, fn});
-      ct->parent = track;
+      ct->set_parent(track);
 
       instruction_calls_track.insert({inst, ct});
       process_cgnode(cr.second, ct, visited);

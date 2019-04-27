@@ -12,7 +12,7 @@ using namespace llvm;
 MPILabelling
 MPILabellingAnalysis::run (Module &m, ModuleAnalysisManager &mam) {
 
-  std::shared_ptr<CallGraph> cg = std::make_shared<CallGraph>(m);
+  CallGraph &cg = mam.getResult<CallGraphAnalysis>(m);
   return MPILabelling(cg);
 }
 
@@ -23,11 +23,10 @@ AnalysisKey MPILabellingAnalysis::Key;
 // -------------------------------------------------------------------------- //
 // MPILabelling
 
-MPILabelling::MPILabelling(std::shared_ptr<CallGraph> &cg)
-    : cg(cg) {
+MPILabelling::MPILabelling(CallGraph &cg) {
 
   // There is no root node
-  for (const auto &node : *cg) {
+  for (const auto &node : cg) {
     CallGraphNode const *cgn = node.second.get();
     if (cgn->getFunction()) { // explore only function node
       explore_cgnode(cgn);
@@ -112,6 +111,11 @@ MPILabelling::explore_cgnode(CallGraphNode const *cgn) {
     case MPI_INVOLVED_MEDIATELY:
       inner_es = MPI_INVOLVED_MEDIATELY;
       save_checkpoint(call_site.getInstruction(), MPICallType::INDIRECT);
+      break;
+    case PROCESSING:
+    case SEQUENTIAL:
+      // do nothing
+      break;
     }
 
     if (res_es < inner_es) {
@@ -131,28 +135,3 @@ void MPILabelling::save_checkpoint(Instruction *inst, MPICallType call_type) {
 
   bb_mpi_checkpoints[bb].emplace(inst->getIterator(), call_type);
 }
-
-
-/*
-bool MPILabelling::does_invoke_call( // TODO: this belongs to scope analysis
-    Function const *f,
-    StringRef name
-) const {
-
-  CallGraphNode *cgn = (*cg)[f];
-  for (CallGraphNode::CallRecord const &cr : *cgn) {
-    // auto it = mpi_affected_calls.find(&bb);
-    // assert (it != mpi_affected_calls.end()); // TODO: is it correct?
-
-    // const std::vector<std::pair<CallInst *, MPICallType>> &calls = it->second;
-    // for (const std::pair<CallInst *, MPICallType> &call_type : calls) {
-    //   CallInst * inst = call_type.first;
-    //   StringRef inst_name = inst->getCalledFunction()->getName();
-    //   if (call_type.second == MPICallType::DIRECT && inst_name == name) {
-    //     return true;
-    //   }
-    // }
-  }
-  return false;
-}
-*/

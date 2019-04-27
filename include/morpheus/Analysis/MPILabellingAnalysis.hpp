@@ -49,18 +49,15 @@ namespace llvm {
     MPICalls mpi_calls;
     MPICheckpointsInBB bb_mpi_checkpoints;
 
-    std::shared_ptr<CallGraph> cg;
-
   public:
 
-    explicit MPILabelling(std::shared_ptr<CallGraph> &cg);
+    explicit MPILabelling(CallGraph &cg);
     MPILabelling(const MPILabelling &labelling) = default;
     MPILabelling(MPILabelling &&labelling) = default;
 
     Instruction *get_unique_call(StringRef name) const;
     bool is_sequential(Function const *f) const;
     bool is_mpi_involved(Function const *f) const;
-    // bool does_invoke_call(Function const *f, StringRef name) const; // TODO: move into scope analysis
 
     MPICheckpoints get_mpi_checkpoints(BasicBlock const *bb) const;
 

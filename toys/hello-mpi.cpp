@@ -3,6 +3,10 @@
 
 // std::string print_rank(int rank);
 
+void ii (int *argc, char ***argv) {
+  MPI_Init(argc, argv);
+}
+
 void ff () {
   MPI_Finalize();
 }
@@ -26,7 +30,8 @@ void unreachable_fn() {
 }
 
 int main (int argc, char *argv[]) {
-  MPI_Init(&argc, &argv);
+  ii(&argc, &argv);
+  // MPI_Init(&argc, &argv);
 
   int rank, size;
 

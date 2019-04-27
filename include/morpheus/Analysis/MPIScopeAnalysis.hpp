@@ -16,14 +16,9 @@
 
 #include "llvm/ADT/ilist_iterator.h"
 #include "llvm/ADT/simple_ilist.h"
-#include "llvm/ADT/MapVector.h"
-#include "llvm/IR/PassManager.h"
 #include "llvm/IR/ModuleSummaryIndex.h"
 
-#include <string>
-#include <forward_list>
 #include <optional>
-#include <vector>
 #include <unordered_map>
 #include <iterator>
 
@@ -135,29 +130,28 @@ namespace llvm {
   // TODO: does it make sense to implement ilist_node_with_parent (as same as basic block?)
   class MPIScope {
     using VisitedNodes = std::unordered_map<CallGraphNode const *, bool>;
-    using InnerCallNode = std::pair<std::optional<Instruction *>, Function *>;
-    friend raw_ostream &operator<< (raw_ostream &out, const InnerCallNode &inode);
+
+    ModuleSummaryIndex &index;
+    CallGraph &cg;
+    MPILabelling &labelling;
 
   public:
-    using CallNode = PPNode<InnerCallNode>;
+    using CallNodeDataT = std::pair<std::optional<Instruction *>, Function *>;
+    using CallNode = PPNode<CallNodeDataT>;
     using CallsTrack = std::shared_ptr<CallNode>;
 
   private:
-    ModuleSummaryIndex &index;
+    friend raw_ostream &operator<< (raw_ostream &out, const CallNodeDataT &data);
 
-    std::shared_ptr<CallGraph> cg;
-    std::unique_ptr<MPILabelling> labelling;
-
-    std::unordered_map<Instruction const *, CallsTrack> instruction_calls_track; // TODO: there can be more than one calls track (because of possibility that there is more than one root node)
-    // MapVector<Instruction const *, CallsTrack> instruction_calls_track;
+    std::unordered_map<Instruction const *, CallsTrack> instruction_calls_track;
 
   public:
 
     // TODO: add mapping from an Instruction* to CallsTrack (22.4 it's been added above)
     using iterator = ScopeIterator;
 
-    explicit MPIScope(ModuleSummaryIndex &index, std::shared_ptr<CallGraph> &cg);
-    MPIScope(const MPIScope &scope);
+    explicit MPIScope(ModuleSummaryIndex &index, MPILabelling &labelling, CallGraph &cg);
+    MPIScope(const MPIScope &scope) = delete;
     MPIScope(MPIScope &&scope) = default;
 
     /*

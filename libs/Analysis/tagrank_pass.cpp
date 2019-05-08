@@ -12,15 +12,12 @@
 
 using namespace llvm;
 
-static cl::opt<bool>
-TagRank("tagrank", cl::desc("Print pass management debugging information"));
 
 namespace {
 
   struct TagRankPass : public PassInfoMixin<TagRankPass> {
 
     PreservedAnalyses run (Module &m, ModuleAnalysisManager &am) {
-
       errs() << "TAG RANK: before\n";
 
       // All of my passes needs to be registered before used.

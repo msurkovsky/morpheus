@@ -10,13 +10,19 @@
 
 using namespace llvm;
 
-static cl::opt<unsigned> UserBonusInstThreshold(
-    "bonus-inst-threshold", cl::Hidden, cl::init(1),
-    cl::desc("Control the number of bonus instructions (default = 1)"));
+// static cl::opt<unsigned> UserBonusInstThreshold(
+//     "bonus-inst-threshold", cl::Hidden, cl::init(1),
+//     cl::desc("Control the number of bonus instructions (default = 1)"));
+
+// static unsigned my_var;
+static cl::opt<bool> test("abc", cl::init(false));
 
 namespace {
 
   struct TagRankPass : public PassInfoMixin<TagRankPass> {
+
+    TagRankPass() : rank(test.getNumOccurrences() ? -1 : 1) { }
+
     PreservedAnalyses run (Module &m, ModuleAnalysisManager &am) {
 
       errs() << "TAG RANK: before\n";
@@ -34,6 +40,9 @@ namespace {
 
       return PreservedAnalyses::all();
     }
+
+  private:
+    int rank;
   };
 } // end of anonymous namespace
 

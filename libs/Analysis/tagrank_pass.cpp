@@ -3,13 +3,19 @@
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Analysis/ModuleSummaryAnalysis.h"
+#include "llvm/Support/CommandLine.h"
 
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
 using namespace llvm;
 
+static cl::opt<unsigned> UserBonusInstThreshold(
+    "bonus-inst-threshold", cl::Hidden, cl::init(1),
+    cl::desc("Control the number of bonus instructions (default = 1)"));
+
 namespace {
+
   struct TagRankPass : public PassInfoMixin<TagRankPass> {
     PreservedAnalyses run (Module &m, ModuleAnalysisManager &am) {
 

@@ -8,7 +8,6 @@ endif ()
 message (STATUS "LLVM_ROOT_PATH: ${LLVM_ROOT_PATH}")
 
 set (USED_LLVM_PATH ${LLVM_ROOT_PATH})
-# set (USED_LLVM_PATH "/home/sur096/install/llvm7.0.0")
 set (USED_LLVM_INCLUDES "${USED_LLVM_PATH}/sources/include")
 set (CMAKE_CXX_COMPILER "${USED_LLVM_PATH}/build/bin/clang++")
 
@@ -26,7 +25,7 @@ add_definitions (${LLVM_DEFINITIONS})
 message("LLVM include dirs: ${LLVM_INCLUDE_DIRS}")
 
 # set (CMAKE_CXX_STANDARD 14)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -g -O0 -std=c++17")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -fPIC -fno-rtti -g -O0 -std=c++17")
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/libs-bin)

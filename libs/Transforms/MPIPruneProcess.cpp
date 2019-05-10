@@ -1,57 +1,82 @@
 
-#include "llvm/IR/PassManager.h"
-#include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/PassPlugin.h"
-#include "llvm/Analysis/ModuleSummaryAnalysis.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/TypeBuilder.h"
+#include "llvm/Support/CommandLine.h"
 
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
+#include "morpheus/Transforms/MPIPruneProcess.hpp"
 
 using namespace llvm;
 
-namespace {
-  struct TagRankPass : public PassInfoMixin<TagRankPass> {
-    PreservedAnalyses run (Module &m, ModuleAnalysisManager &am) {
+// -------------------------------------------------------------------------- //
+// MPIPruneProcessPass
 
-      errs() << "TAG RANK: before\n";
+static cl::opt<unsigned> rank_arg(
+    "rank", cl::Required, cl::Hidden,
+    cl::desc("An unsigned integer specifying rank of interest."));
 
-      // All of my passes needs to be registered before used.
-      am.registerPass([] { return MPILabellingAnalysis(); });
-      am.registerPass([] { return MPIScopeAnalysis(); });
+PreservedAnalyses MPIPruneProcessPass::run (Module &m, ModuleAnalysisManager &am) {
 
-      MPIScope &mpi_scope = am.getResult<MPIScopeAnalysis>(m);
-      MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
+  am.registerPass([] { return MPILabellingAnalysis(); });
 
-      // TODO: use the result of analyses -> rename this to SplitByRank pass
+  MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
 
-      errs() << "TAG RANK: after\n";
+  Instruction *comm_rank = mpi_labelling.get_unique_call("MPI_Comm_rank");
+  errs() << *comm_rank << "\n";
 
-      return PreservedAnalyses::all();
+  if (comm_rank) {
+    CallSite cs_comm_rank(comm_rank);
+    Value *rank_val = cs_comm_rank.getArgument(1);
+    errs() << *rank_val << "\n";
+    errs() << "Rank type: " << *rank_val->getType() << "\n";
+
+    LLVMContext &ctx = comm_rank->getFunction()->getContext();
+    IntegerType *t = IntegerType::get(ctx, 32);
+    IntegerType *t2 = TypeBuilder<types::i<32>, false>::get(ctx);
+
+    errs() << *t << " - " << *t2 << "\n";
+
+    IRBuilder<> builder(comm_rank);
+    ConstantInt *const_rank = builder.getInt32(rank_arg);
+    AllocaInst *const_rank_alloc = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "rank");
+    builder.CreateStore(const_rank, const_rank_alloc);
+
+    errs() << "const_rank: " << *const_rank << "\n";
+
+    errs() << "Users:\n";
+    for (auto *user : rank_val->users()) {
+      errs() << *user << "\n";
     }
-  };
-} // end of anonymous namespace
 
-
-// The possibility to call pass via opt
-extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-
-llvmGetPassPluginInfo() {
-  return {
-    LLVM_PLUGIN_API_VERSION, "TagRankPass", "v0.1", // TODO: expose version
-      [](PassBuilder &PB) {
-      PB.registerPipelineParsingCallback(
-        [](StringRef PassName, ModulePassManager &MPM, ArrayRef<PassBuilder::PipelineElement>) {
-          if (PassName == "tag-rank-pass") {
-            // NOTE: the standard passes are already registered
-            //       so I just add them, if needed.
-            MPM.addPass(RequireAnalysisPass<CallGraphAnalysis, Module>());
-            MPM.addPass(RequireAnalysisPass<ModuleSummaryIndexAnalysis, Module>());
-            MPM.addPass(TagRankPass());
-            return true;
-          }
-          return false;
-        }
-      );
+    // rank_val->replaceAllUsesWith(const_rank_alloc); // NOTE: cannot use this, because it changes also MPI_Comm_rank call
+    for (auto *user : rank_val->users()) { // .. instead of replaceAllUses I'm using call on the user
+      if (user != comm_rank) {
+        user->replaceUsesOfWith(rank_val, const_rank_alloc);
+      }
     }
-  };
+
+    errs() << "users of original rank:\n";
+    for (auto *user : rank_val->users()) {
+      errs() << *user << "\n";
+    }
+    errs() << "users of const rank:\n";
+    for (auto *user : const_rank_alloc->users()) {
+      errs() << *user << "\n";
+    }
+    // errs() << "Uses:\n";
+    // for (auto &use : rank_val->uses()) {
+    //   errs() << *use.getUser() << "\n";
+    // }
+
+    // Function *fn_comm_rank = cs_comm_rank.getCalledFunction();
+    // if (fn_comm_rank->hasFnAttribute("rank")) {
+    //   errs() << "YES\n";
+    // } else {
+    //   errs() << "NO\n";
+    // }
+  }
+
+  // pruning code causes that all analyses are invalidated
+  return PreservedAnalyses::none();
 }

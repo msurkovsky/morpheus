@@ -1,57 +1,34 @@
 
-#include "llvm/IR/PassManager.h"
-#include "llvm/Passes/PassBuilder.h"
-#include "llvm/Passes/PassPlugin.h"
-#include "llvm/Analysis/ModuleSummaryAnalysis.h"
+#include "llvm/Support/CommandLine.h"
 
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
+#include "morpheus/Transforms/MPIPruneProcess.hpp"
 
 using namespace llvm;
 
-namespace {
-  struct TagRankPass : public PassInfoMixin<TagRankPass> {
-    PreservedAnalyses run (Module &m, ModuleAnalysisManager &am) {
+// -------------------------------------------------------------------------- //
+// MPIPruneProcessPass
 
-      errs() << "TAG RANK: before\n";
+// NOTE: no the problem remains the same, but why?
+static cl::opt<unsigned int> targ("testing cli argument", cl::Hidden,
+                              cl::init(7),
+                              cl::desc("Some description of the testing argument"));
 
-      // All of my passes needs to be registered before used.
-      am.registerPass([] { return MPILabellingAnalysis(); });
-      am.registerPass([] { return MPIScopeAnalysis(); });
+PreservedAnalyses MPIPruneProcessPass::run (Module &m, ModuleAnalysisManager &am) {
+  errs() << "TAG RANK: before\n";
 
-      MPIScope &mpi_scope = am.getResult<MPIScopeAnalysis>(m);
-      MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
+  // All of my passes needs to be registered before used.
+  am.registerPass([] { return MPILabellingAnalysis(); });
+  am.registerPass([] { return MPIScopeAnalysis(); });
 
-      // TODO: use the result of analyses -> rename this to SplitByRank pass
+  MPIScope &mpi_scope = am.getResult<MPIScopeAnalysis>(m);
+  MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
 
-      errs() << "TAG RANK: after\n";
+  errs() << "targ: " << targ << "\n";
+  // TODO: use the result of analyses -> rename this to SplitByRank pass
 
-      return PreservedAnalyses::all();
-    }
-  };
-} // end of anonymous namespace
+  errs() << "TAG RANK: after\n";
 
-
-// The possibility to call pass via opt
-extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-
-llvmGetPassPluginInfo() {
-  return {
-    LLVM_PLUGIN_API_VERSION, "TagRankPass", "v0.1", // TODO: expose version
-      [](PassBuilder &PB) {
-      PB.registerPipelineParsingCallback(
-        [](StringRef PassName, ModulePassManager &MPM, ArrayRef<PassBuilder::PipelineElement>) {
-          if (PassName == "tag-rank-pass") {
-            // NOTE: the standard passes are already registered
-            //       so I just add them, if needed.
-            MPM.addPass(RequireAnalysisPass<CallGraphAnalysis, Module>());
-            MPM.addPass(RequireAnalysisPass<ModuleSummaryIndexAnalysis, Module>());
-            MPM.addPass(TagRankPass());
-            return true;
-          }
-          return false;
-        }
-      );
-    }
-  };
+  return PreservedAnalyses::all();
 }

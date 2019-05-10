@@ -1,13 +1,10 @@
-add_library (RankInfoAnalysis MODULE
-  RankLocalizator.cpp
-  IsRank.cpp
-  tagrank_pass.cpp
+add_library (MPIRelAnalysis SHARED
   MPIScopeAnalysis.cpp
   MPILabellingAnalysis.cpp
   )
 
-target_include_directories (RankInfoAnalysis PRIVATE ${MORPHEUS_INCLUDES})
-target_include_directories (RankInfoAnalysis SYSTEM PRIVATE
+target_include_directories (MPIRelAnalysis PRIVATE ${MORPHEUS_INCLUDES})
+target_include_directories (MPIRelAnalysis SYSTEM PRIVATE
   ${LLVM_INCLUDE_DIRS}
   ${USED_LLVM_INCLUDES}
   )

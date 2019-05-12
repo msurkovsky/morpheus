@@ -16,7 +16,8 @@ llvmGetPassPluginInfo() {
       [](PassBuilder &PB) {
       PB.registerPipelineParsingCallback(
         [](StringRef PassName, ModulePassManager &MPM, ArrayRef<PassBuilder::PipelineElement>) {
-          if (PassName == "pruneprocess") {
+          if (PassName.startswith("pruneprocess")) {
+          // if (PassName == "pruneprocess") {
             // NOTE: the standard passes are already registered
             //       so I just add them, if needed.
             MPM.addPass(RequireAnalysisPass<CallGraphAnalysis, Module>());

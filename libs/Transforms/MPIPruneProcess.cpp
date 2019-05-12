@@ -11,7 +11,7 @@ using namespace llvm;
 // MPIPruneProcessPass
 
 // NOTE: no the problem remains the same, but why?
-static cl::opt<unsigned int> targ("testing cli argument", cl::Hidden,
+static cl::opt<unsigned> targ("mujarg",
                               cl::init(7),
                               cl::desc("Some description of the testing argument"));
 

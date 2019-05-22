@@ -4,28 +4,25 @@ from subprocess import Popen, call, PIPE, DEVNULL
 import click
 
 class Pipeline:
-    def __init__(self):
-        self.input_proc = None
+    def __init__(self, input):
+        self.input = input
         self.proc = None
 
     def command(self, args, **kwargs):
-        stdin = PIPE if self.proc is None else self.proc.stdout
-        proc = Popen(list(args), stdin=stdin, stdout=PIPE, stderr=PIPE, **kwargs)
         if self.proc is None:
-            self.input_proc = proc
+            stdin = None if self.input is None else self.input
         else:
+            stdin = self.proc.stdout
+
+        proc = Popen(list(args), stdin=stdin, stdout=PIPE, stderr=PIPE, **kwargs)
+        if self.proc is not None:
             self.proc.stdout.close() # close in order to allow receive a SIGPIPE
                                      # if the current one exits
         self.proc = proc
         return self
 
-    def run(self, input=None):
+    def run(self):
         if self.proc is not None:
-            if input is not None:
-                print ("echo start...")
-                call(["echo", input], stdout=self.input_proc.stdin) # NOTE: make the same problem as 'input' from communicate
-                print ("echo has ended")
-
             (out, pid) = self.proc.communicate()
             # TODO: assert pid (=stderr)
             return out
@@ -98,10 +95,10 @@ def generate_mpn(source_file, nproc, output_file):
 
 
 def gen2():
-    p = Pipeline()
+    p = Pipeline(input="ahoj\nnazdar")
     out = p.command(["cat"]) \
            .command(["sort", "-r"]) \
-           .run(input="ahoj\nnazdar".encode())
+           .run()
            # .command(["grep", "aso"])\
     print (out.decode())
 

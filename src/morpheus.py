@@ -1,24 +1,33 @@
 import os
-from subprocess import Popen, PIPE, DEVNULL
+from subprocess import Popen, call, PIPE, DEVNULL
 
 import click
 
 class Pipeline:
     def __init__(self):
+        self.input_proc = None
         self.proc = None
 
     def command(self, args, **kwargs):
         stdin = PIPE if self.proc is None else self.proc.stdout
         proc = Popen(list(args), stdin=stdin, stdout=PIPE, stderr=PIPE, **kwargs)
-        if self.proc is not None:
+        if self.proc is None:
+            self.input_proc = proc
+        else:
             self.proc.stdout.close() # close in order to allow receive a SIGPIPE
                                      # if the current one exits
         self.proc = proc
         return self
 
-    def run(self, **kwargs):
+    def run(self, input=None):
         if self.proc is not None:
-            (out, pid) = self.proc.communicate(**kwargs)
+            if input is not None:
+                print ("echo start...")
+                call(["echo", input], stdout=self.input_proc.stdin) # NOTE: make the same problem as 'input' from communicate
+                print ("echo has ended")
+
+            (out, pid) = self.proc.communicate()
+            # TODO: assert pid (=stderr)
             return out
 
 @click.command()
@@ -66,43 +75,36 @@ def generate_mpn(source_file, nproc, output_file):
                 "-rank", str(p),                  # prune rank 'p'
                 "-o", "-"                         # redirect output to stdout
             ], cwd=cwd) \
-            .command([ # TODO: why I cannot pipeline commands in this way?!
-                opt_tool,
-                "-S",
-                "-mem2reg",
-                "-constprop",
-                "-simplifycfg",
-                "-o", "-"
-            ], cwd=cwd).run(input=ll)
+            .run(input=ll)
+            # .command([ # TODO: why I cannot pipeline commands in this way?!
+            #     opt_tool,
+            #     "-S",
+            #     "-mem2reg",
+            #     "-constprop",
+            #     "-simplifycfg",
+            #     "-o", "-"
+            # ], cwd=cwd) \
+
+        prune_nth_ll.proc.wait()
+        print (pruned_ll.decode())
 
         processes.append(pruned_ll)
 
-    print ("#np: ", len(processes))
-    for i, proc  in enumerate(processes):
-        print ("- {} -----------------------".format(i))
-        print (proc.decode())
-        print ("---------------------------\n")
+    # print ("#np: ", len(processes))
+    # for i, proc  in enumerate(processes):
+    #     print ("- {} -----------------------".format(i))
+    #     print (proc.decode())
+    #     print ("---------------------------\n")
 
 
-def command(commands, env=None): # TODO do I need sth like this?
-    args = []
-
-    environment = {};
-    if env:
-        environment.update(env)
-
-    if environment:
-        args += ["env"]
-        for (key, val) in environment.items():
-            args += ["{}={}".format(key, val)]
-
-    args += [str(cmd) for cmd in commands]
-
-    return " ".join(args)
-
-# rather I need a concatenation of commands -> pipelining
-
+def gen2():
+    p = Pipeline()
+    out = p.command(["cat"]) \
+           .command(["sort", "-r"]) \
+           .run(input="ahoj\nnazdar".encode())
+           # .command(["grep", "aso"])\
+    print (out.decode())
 
 if __name__ == "__main__":
-    generate_mpn()
+    gen2()
 

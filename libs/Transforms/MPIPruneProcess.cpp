@@ -7,6 +7,8 @@
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 #include "morpheus/Transforms/MPIPruneProcess.hpp"
 
+#include <algorithm>
+
 using namespace llvm;
 
 // -------------------------------------------------------------------------- //
@@ -28,58 +30,19 @@ PreservedAnalyses MPIPruneProcessPass::run (Module &m, ModuleAnalysisManager &am
     CallSite cs_comm_rank(comm_rank);
     Value *rank_val = cs_comm_rank.getArgument(1);
 
-
-    // errs() << "comm rank: " << *comm_rank << "\n";
-    // auto it = comm_rank->getIterator();
-    // it++; // NOTE: i need to shift it to move further; why?
-    // Instruction *next_inst = &*it++;
-    // errs() << "next inst: " << *next_inst << "\n";
-
     IRBuilder<> builder(comm_rank);
     ConstantInt *const_rank = builder.getInt32(rank_arg);
-    AllocaInst *const_rank_alloc = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "rank");
-    builder.CreateStore(const_rank, const_rank_alloc);
-    // builder.CreateStore(rank_val, const_rank);
 
-    errs() << "const_rank: " << *const_rank << "\n";
+    // NOTE: copy users to avoid iterator invalidation during replaces
+    std::vector<User *> users;
+    std::copy(rank_val->user_begin(), rank_val->user_end(), std::back_inserter(users));
 
-    errs() << "Users:\n";
-    std::vector<User*> users;
-    for (auto *user : rank_val->users()) {
-      users.push_back(user); // store users
-      errs() << *user << "\n";
-    }
-
-    // rank_val->replaceAllUsesWith(const_rank_alloc); // NOTE: cannot use this, because it changes also MPI_Comm_rank call
-    for (auto *user : users) { // .. instead of replaceAllUses I'm using call on the user
-      // NOTE: iterate over stored users to avoid iterator invalidation
-      errs() << "USER: " << *user << "\n";
-      if (user != comm_rank) {
-        user->replaceUsesOfWith(rank_val, const_rank_alloc);
+    for (auto *user : users) {
+      if (isa<LoadInst>(user)) {
+        // replace all loads from rank by const value
+        user->replaceAllUsesWith(const_rank);
       }
     }
-
-    errs() << "users of original rank:\n";
-    for (auto *user : rank_val->users()) {
-      errs() << *user << "\n";
-    }
-
-    errs() << "users of const rank:\n";
-    for (auto *user : const_rank_alloc->users()) {
-      errs() << *user << "\n";
-    }
-
-    // errs() << "Uses:\n";
-    // for (auto &use : rank_val->uses()) {
-    //   errs() << *use.getUser() << "\n";
-    // }
-
-    // Function *fn_comm_rank = cs_comm_rank.getCalledFunction();
-    // if (fn_comm_rank->hasFnAttribute("rank")) {
-    //   errs() << "YES\n";
-    // } else {
-    //   errs() << "NO\n";
-    // }
   }
 
   // pruning code causes that all analyses are invalidated

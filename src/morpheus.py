@@ -60,10 +60,17 @@ def generate_mpn(source_file, nproc, output_file):
                 "-simplifycfg",
                 "-o", "-"
             ]
+            c = local[opt_tool][
+                "-disable-output",
+                "-dot-cfg",
+                "-o", "-"
+            ]
 
             # cmd = (ll | a) & BG(stderr=sys.stderr)# | b
-            cmd = ll | a | b
-            print(cmd())
+            cmd = ll | a | b | c
+            # (retcode, stdout, stderr) = cmd.run(retcode=None)
+            # print ("Proc [{}]".format(p), stdout)
+            print (cmd())
 
 
 if __name__ == "__main__":

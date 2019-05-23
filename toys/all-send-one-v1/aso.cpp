@@ -1,16 +1,25 @@
 #include "mpi.h"
 
+#include <functional>
+
 void do_nothing() {
   // do nothing
+}
+
+int get_rank() {
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  return rank;
 }
 
 int main (int argc, char *argv[]) {
   enum { TAG_A };
 
+  std::function<int()> GetRank = get_rank;
   MPI_Init(&argc, &argv);
 
-  int rank, size;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  int rank = GetRank(), size;
+  // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &size);
 
   if (rank == 0) {

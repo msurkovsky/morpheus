@@ -1,5 +1,9 @@
 #include "mpi.h"
 
+void do_nothing() {
+  // do nothing
+}
+
 int main (int argc, char *argv[]) {
   enum { TAG_A };
 
@@ -14,8 +18,8 @@ int main (int argc, char *argv[]) {
     for (int i=0, src=1; src < size; i++, src++) {
       MPI_Recv(&ns[i], 1, MPI_INT, src, TAG_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
-  // } else if (rank == 1) {
-    // nothing
+  } else if (rank == 1) {
+    do_nothing();
   }else {
     MPI_Send(&rank, 1, MPI_INT, 0, TAG_A, MPI_COMM_WORLD);
   }

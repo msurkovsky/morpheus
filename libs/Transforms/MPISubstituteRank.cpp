@@ -5,7 +5,7 @@
 
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
-#include "morpheus/Transforms/MPIPruneProcess.hpp"
+#include "morpheus/Transforms/MPISubstituteRank.hpp"
 
 #include <algorithm>
 
@@ -18,7 +18,7 @@ static cl::opt<unsigned> rank_arg(
     "rank", cl::Required, cl::Hidden,
     cl::desc("An unsigned integer specifying rank of interest."));
 
-PreservedAnalyses MPIPruneProcessPass::run (Module &m, ModuleAnalysisManager &am) {
+PreservedAnalyses MPISubstituteRankPass::run (Module &m, ModuleAnalysisManager &am) {
 
   am.registerPass([] { return MPILabellingAnalysis(); });
 

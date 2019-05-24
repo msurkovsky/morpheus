@@ -1,5 +1,5 @@
 add_library(MPIRelTransforms SHARED
-  MPIPruneProcess.cpp
+  MPISubstituteRank.cpp
   )
 
 target_include_directories (MPIRelTransforms PRIVATE ${MORPHEUS_INCLUDES})

@@ -3,7 +3,7 @@
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Analysis/ModuleSummaryAnalysis.h"
 
-#include "morpheus/Transforms/MPIPruneProcess.hpp"
+#include "morpheus/Transforms/MPISubstituteRank.hpp"
 
 using namespace llvm;
 
@@ -16,13 +16,13 @@ llvmGetPassPluginInfo() {
       [](PassBuilder &PB) {
       PB.registerPipelineParsingCallback(
         [](StringRef PassName, ModulePassManager &MPM, ArrayRef<PassBuilder::PipelineElement>) {
-          if (PassName.startswith("pruneprocess")) {
+          if (PassName.startswith("substituterank")) {
           // if (PassName == "pruneprocess") {
             // NOTE: the standard passes are already registered
             //       so I just add them, if needed.
             MPM.addPass(RequireAnalysisPass<CallGraphAnalysis, Module>());
             MPM.addPass(RequireAnalysisPass<ModuleSummaryIndexAnalysis, Module>());
-            MPM.addPass(MPIPruneProcessPass());
+            MPM.addPass(MPISubstituteRankPass());
           }
           return true;
         }

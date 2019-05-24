@@ -12,7 +12,7 @@
 
 namespace llvm {
 
-  struct MPIPruneProcessPass : public PassInfoMixin<MPIPruneProcessPass> {
+  struct MPISubstituteRankPass : public PassInfoMixin<MPISubstituteRankPass> {
 
     PreservedAnalyses run (Module &m, ModuleAnalysisManager& am);
   };

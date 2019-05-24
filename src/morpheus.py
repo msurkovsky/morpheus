@@ -49,7 +49,7 @@ def generate_mpn(source_file, nproc, output_file):
                 "-S",                             # TODO: debug to write as LLVM assembly
                 "--load", lib_morph,              # use old PM in order to process cli arguments (cl::opt)
                 "--load-pass-plugin", lib_morph,  # use new PM
-                "-passes", "pruneprocess",        # pass pruneprocess
+                "-passes", "substituterank",      # pass pruneprocess
                 "-rank", str(p),                  # prune rank 'p'
                 "-o", "-"                         # redirect output to stdout
             ]

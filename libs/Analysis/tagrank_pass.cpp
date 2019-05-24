@@ -1,8 +1,10 @@
 
+#include "llvm/IR/PassManager.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Analysis/ModuleSummaryAnalysis.h"
 
+#include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 
 using namespace llvm;
@@ -13,49 +15,14 @@ namespace {
 
       errs() << "TAG RANK: before\n";
 
+      // All of my passes needs to be registered before used.
+      am.registerPass([] { return MPILabellingAnalysis(); });
+      am.registerPass([] { return MPIScopeAnalysis(); });
 
-      // // Register TestingAnalysisPass to the function analysis manager
-      // FunctionAnalysisManager &fam = MAM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
-      // pass builder for testing analysis pass
-      auto pb_tap = [](){ return MPIScopeAnalysis(); };
-      am.registerPass(pb_tap);
+      MPIScope &mpi_scope = am.getResult<MPIScopeAnalysis>(m);
+      MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
 
-      // Run the module adaptor
-      // adaptor.run(M, MAM);
-
-      // ModuleToFunctionPassAdaptor<RankAnalysis> adaptor = createModuleToFunctionPassAdaptor(RankAnalysis());
-      // for (auto &f : M) {
-      //   auto &res = fam.getResult<RankAnalysis>(f);
-      // }
-
-      auto &res = am.getResult<MPIScopeAnalysis>(m);
-
-      /* commented: (1.4.2019)
-      // NOTE: it seems that at this point the results are not available yet ??
-      auto it = res.begin();
-      it++;
-      auto it2 = res.end();
-      errs() << "begin == end: " << (it == it2) << "\n";
-      */
-
-
-      for (auto &inst : res) {
-        errs() << "INST: " << inst << "\n";
-        // if (&inst) {
-        //   errs() << "INST: " << inst.getValueID() << "\n";
-        //   errs() << "\t >>> " << inst << "\n";
-        // } else {
-        //   errs() << "AAA\n";
-        // }
-      }
-
-      // auto it = res.begin();
-      // errs() << "IT: " << *it << "\n";
-      // errs() << "Is scope valid: " << (res.isValid() ? "YES" : "NO") << "\n";
-      // errs() << "Scope: " << res.scope->getName() << "\n";
-      // errs() << "begin: " << res.start->getCalledFunction()->getName() << "\n";
-      // errs() << "end: " << res.end->getCalledFunction()->getName() << "\n";
-
+      // TODO: use the result of analyses -> rename this to SplitByRank pass
 
       errs() << "TAG RANK: after\n";
 
@@ -75,6 +42,9 @@ llvmGetPassPluginInfo() {
       PB.registerPipelineParsingCallback(
         [](StringRef PassName, ModulePassManager &MPM, ArrayRef<PassBuilder::PipelineElement>) {
           if (PassName == "tag-rank-pass") {
+            // NOTE: the standard passes are already registered
+            //       so I just add them, if needed.
+            MPM.addPass(RequireAnalysisPass<CallGraphAnalysis, Module>());
             MPM.addPass(RequireAnalysisPass<ModuleSummaryIndexAnalysis, Module>());
             MPM.addPass(TagRankPass());
             return true;

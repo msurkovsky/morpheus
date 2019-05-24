@@ -1,5 +1,6 @@
 
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
+#include "llvm/Support/raw_ostream.h"
 #include <cassert>
 
 using namespace llvm;
@@ -30,7 +31,7 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
   StringRef finalize_f_name = "MPI_Finalize";
 
   CallInst *init_f, *finalize_f;
-  do {
+  while (true) {
     for (auto &f : m) {
       init_f = find_call_in_by_name(init_f_name, f);
       finalize_f = find_call_in_by_name(finalize_f_name, f);
@@ -55,7 +56,15 @@ MPIScopeAnalysis::run(Module &m, ModuleAnalysisManager &am) {
         finalize_f_name = f_name;
       }
     }
-  } while ((init_f && finalize_f) || (!init_f && !finalize_f));
+
+    if (init_f && finalize_f) {
+      break;
+    }
+
+    if (!init_f && !finalize_f) {
+      break;
+    }
+  }
 
   return result;
 }

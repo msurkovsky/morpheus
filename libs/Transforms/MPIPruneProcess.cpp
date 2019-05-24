@@ -24,9 +24,10 @@ PreservedAnalyses MPIPruneProcessPass::run (Module &m, ModuleAnalysisManager &am
 
   MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
 
-  Instruction *comm_rank = mpi_labelling.get_unique_call("MPI_Comm_rank");
+  std::vector<Instruction *> comm_ranks = mpi_labelling.get_calls("MPI_Comm_rank");
 
-  if (comm_rank) {
+  // replace all usages of rank by constant value
+  for (Instruction *comm_rank : comm_ranks) {
     CallSite cs_comm_rank(comm_rank);
     Value *rank_val = cs_comm_rank.getArgument(1);
 

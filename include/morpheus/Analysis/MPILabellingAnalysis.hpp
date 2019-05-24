@@ -35,7 +35,9 @@ namespace llvm {
   private:
     enum ExplorationState {
       PROCESSING = 0,
-      SEQUENTIAL,
+      SEQUENTIAL,                  // 'sequential' < 'external' because unless proved otherwise
+                                   // the function is supposed to be sequential.
+      EXTERNAL,                    // indirect call cannot be analyzed what is inside
       MPI_CALL,
       MPI_INVOLVED,
       MPI_INVOLVED_MEDIATELY,

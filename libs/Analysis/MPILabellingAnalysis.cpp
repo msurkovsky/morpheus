@@ -50,6 +50,23 @@ Instruction *MPILabelling::get_unique_call(StringRef name) const {
   return calls[0].getInstruction();
 }
 
+std::vector<Instruction *> MPILabelling::get_calls(StringRef name) const {
+  auto search = mpi_calls.find(name);
+  if (search == mpi_calls.end()) {
+    return {}; // empty list
+  }
+
+  std::vector<CallSite> const &calls = search->second;
+  std::vector<Instruction *> instrs(calls.size());
+  std::generate(
+    instrs.begin(),
+    instrs.end(),
+    [it = calls.begin()] () mutable {
+      return (it++)->getInstruction();
+    });
+  return instrs;
+}
+
 bool MPILabelling::is_sequential(Function const *f) const {
   return check_status<SEQUENTIAL>(f);
 }

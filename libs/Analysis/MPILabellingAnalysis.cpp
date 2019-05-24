@@ -28,7 +28,7 @@ MPILabelling::MPILabelling(CallGraph &cg) {
   // There is no root node
   for (const auto &node : cg) {
     CallGraphNode const *cgn = node.second.get();
-    if (cgn->getFunction()) { // explore only function node
+    if (cgn->getFunction()) { // explore only function node TODO: check whether is it enough to ignore non-function calls or the reaction should be "better"?
       explore_cgnode(cgn);
     }
   }
@@ -74,6 +74,9 @@ MPILabelling::get_mpi_checkpoints(BasicBlock const *bb) const {
 MPILabelling::ExplorationState
 MPILabelling::explore_cgnode(CallGraphNode const *cgn) {
   Function *f = cgn->getFunction();
+  if (!f) { // external call
+    return EXTERNAL;
+  }
 
   auto it = fn_labels.find(f);
   if (it != fn_labels.end()) {
@@ -97,25 +100,30 @@ MPILabelling::explore_cgnode(CallGraphNode const *cgn) {
   for (const CallGraphNode::CallRecord &cr : *cgn) {
     ExplorationState inner_es = SEQUENTIAL;
 
-    CallSite call_site(cr.first);
-    CallGraphNode *called_cgn = cr.second;
+    if (cr.first == nullptr) { // calling external node => black (opaque) transition in the MPN
+      inner_es = EXTERNAL;
+    } else {
+      CallSite call_site(cr.first);
+      CallGraphNode *called_cgn = cr.second;
 
-    ExplorationState const &es = explore_cgnode(called_cgn);
-    switch(es) {
-    case MPI_CALL:
-      mpi_calls[call_site.getCalledFunction()->getName()].push_back(call_site);
-      inner_es = MPI_INVOLVED;
-      save_checkpoint(call_site.getInstruction(), MPICallType::DIRECT);
-      break;
-    case MPI_INVOLVED:
-    case MPI_INVOLVED_MEDIATELY:
-      inner_es = MPI_INVOLVED_MEDIATELY;
-      save_checkpoint(call_site.getInstruction(), MPICallType::INDIRECT);
-      break;
-    case PROCESSING:
-    case SEQUENTIAL:
-      // do nothing
-      break;
+      ExplorationState const &es = explore_cgnode(called_cgn);
+      switch(es) {
+      case MPI_CALL:
+        mpi_calls[call_site.getCalledFunction()->getName()].push_back(call_site);
+        inner_es = MPI_INVOLVED;
+        save_checkpoint(call_site.getInstruction(), MPICallType::DIRECT);
+        break;
+      case MPI_INVOLVED:
+      case MPI_INVOLVED_MEDIATELY:
+        inner_es = MPI_INVOLVED_MEDIATELY;
+        save_checkpoint(call_site.getInstruction(), MPICallType::INDIRECT);
+        break;
+      case PROCESSING:
+      case SEQUENTIAL:
+      case EXTERNAL:
+        // do nothing
+        break;
+      }
     }
 
     if (res_es < inner_es) {

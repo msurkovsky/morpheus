@@ -9,6 +9,7 @@ void ff () {
 
 void do_sth() {
   // do something
+  do_sth();
 }
 
 void unreachable_fn() {

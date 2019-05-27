@@ -7,6 +7,10 @@ void ff () {
   MPI_Finalize();
 }
 
+void sink() {
+  // do something
+}
+
 void do_sth() {
   // do something
   do_sth();
@@ -14,6 +18,7 @@ void do_sth() {
 
 void unreachable_fn() {
   // do something
+  sink();
 }
 
 int main (int argc, char *argv[]) {

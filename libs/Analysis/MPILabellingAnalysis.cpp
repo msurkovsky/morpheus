@@ -11,7 +11,10 @@ using namespace llvm;
 LabellingResult
 MPILabellingAnalysis::run (Function &f, FunctionAnalysisManager &fam) {
 
-  return LabellingResult();
+  LabellingResult result;
+  result.explore_function(&f);
+
+  return result;
 }
 
 // provide definition of the analysis Key
@@ -84,4 +87,12 @@ LabellingResult::ExplorationState LabellingResult::explore_bb(
   }
 
   return res_es;
+}
+
+CallInst * LabellingResult::get_call(StringRef name) {
+
+  if (mpi_calls.count(name) == 0) {
+    return nullptr;
+  }
+  return mpi_calls[name][0]; // TODO: count with more call
 }

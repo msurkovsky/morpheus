@@ -44,6 +44,7 @@ namespace llvm {
     // TODO: do I need to store parentage relation? - NO (11.4.19)
   public:
     // some public methods
+    CallInst * get_call(StringRef name);
 
   protected:
 

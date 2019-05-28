@@ -46,10 +46,13 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, MPILabelling &labelling, CallGraph
   Instruction *mpi_init_call = labelling.get_unique_call("MPI_Init");
   Instruction *mpi_fin_call = labelling.get_unique_call("MPI_Finalize");
   if (!mpi_init_call || !mpi_fin_call) {
-    errs() << "There is no MPI area defined by MPI_Init & MPI_Finalize calls.\n";
-    // TODO: setup invalid scope
+    // errs() << "There is no MPI area defined by MPI_Init & MPI_Finalize calls.\n";
+    scope_fn = nullptr;
     return;
   }
+
+  // remove old instruction-calls tracks
+  instruction_calls_track.clear();
 
   // use the index to calculate root functions (those which are not called)
   FunctionSummary root_nodes = index.calculateCallGraphRoot();
@@ -122,10 +125,18 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, MPILabelling &labelling, CallGraph
   }
 
   if (dp == sp) { // MPI Scope
-    errs() << dp->data.second->getName() << "\n";
+    scope_fn = dp->data.second;
   } else { // NO Scope
-    errs() << "No common antecestor\n";
+    scope_fn = nullptr;
   }
+}
+
+Function *MPIScope::getFunction() {
+  return scope_fn;
+}
+
+bool MPIScope::isValid() {
+  return scope_fn != nullptr;
 }
 
 // private members ---------------------------------------------------------- //

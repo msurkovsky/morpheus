@@ -12,7 +12,7 @@
 using namespace llvm;
 
 // -------------------------------------------------------------------------- //
-// MPIPruneProcessPass
+// MPISubstitueRankPass
 
 static cl::opt<unsigned> rank_arg(
     "rank", cl::Required, cl::Hidden,

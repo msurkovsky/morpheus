@@ -1,12 +1,12 @@
 
 //===----------------------------------------------------------------------===//
 //
-// MPIPruneProcess
+// MPISubstituteRankPass
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MRPH_MPI_PRUNE_PROCESS_H
-#define MRPH_MPI_PRUNE_PROCESS_H
+#ifndef MRPH_MPI_SUBSTITUTE_RANK_H
+#define MRPH_MPI_SUBSTITUTE_RANK_H
 
 #include "llvm/IR/PassManager.h"
 
@@ -18,4 +18,4 @@ namespace llvm {
   };
 } // end llvm
 
-#endif // MRPH_MPI_PRUNE_PROCESS_H
+#endif // MRPH_MPI_SUBSTITUTE_RANK_H

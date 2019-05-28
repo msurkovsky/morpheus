@@ -5,8 +5,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef MRPH_PPNODE
-#define MRPH_PPNODE
+#ifndef MRPH_PPNODE_H
+#define MRPH_PPNODE_H
 
 #include <memory>
 #include <optional>
@@ -56,4 +56,4 @@ namespace llvm {
   }
 }
 
-#endif // MMRPH_PPNODE
+#endif // MMRPH_PPNODE_H

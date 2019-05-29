@@ -18,12 +18,10 @@
 #include <vector>
 #include <queue>
 
-namespace {
-  enum struct MPICallType {
-    DIRECT,
-    INDIRECT,
-  };
-}
+enum struct MPICallType {
+  DIRECT,
+  INDIRECT,
+};
 
 
 namespace llvm {
@@ -61,7 +59,6 @@ namespace llvm {
     std::vector<Instruction *> get_calls(StringRef name) const;
     bool is_sequential(Function const *f) const;
     bool is_mpi_involved(Function const *f) const;
-
     MPICheckpoints get_mpi_checkpoints(BasicBlock const *bb) const;
 
   private:

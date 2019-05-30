@@ -22,8 +22,8 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
 
   Function *scope_fn = mpi_scope.getFunction();
 
-  CommunicationNet cn;
-  using CN = CommunicationNet;
+  // TODO: take rank/address value from the input code
+  AddressableCommNet acn(1);
 
   auto bfs_it = breadth_first(scope_fn);
   for (const BasicBlock *bb : bfs_it) {
@@ -37,7 +37,7 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
       }
     }
   }
-  cn.print();
+  acn.print(errs());
 
   return PreservedAnalyses::none(); // TODO: check which analyses have been broken?
 }

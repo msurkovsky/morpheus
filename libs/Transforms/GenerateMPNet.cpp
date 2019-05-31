@@ -3,6 +3,7 @@
 #include "llvm/IR/PassManager.h"
 
 #include "morpheus/ADT/CommunicationNet.hpp"
+#include "morpheus/ADT/CommNetFactory.hpp"
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 #include "morpheus/Transforms/GenerateMPNet.hpp"
@@ -22,6 +23,7 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
 
   Function *scope_fn = mpi_scope.getFunction();
 
+
   // TODO: take rank/address value from the input code
   AddressableCommNet acn(1);
 
@@ -32,7 +34,9 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
     while (!checkpoints.empty()) {
       auto checkpoint = checkpoints.front();
       if (checkpoint.second == MPICallType::DIRECT) { // TODO: first solve direct calls
-        errs() << "\t" << *checkpoint.first << "\n"; // instruction
+        PluginCommNet pcn = CommNetFactory::createCommNet(checkpoint.first);
+        pcn.print(errs());
+        errs() << "\t" << *checkpoint.first.getInstruction() << "\n"; // instruction
         checkpoints.pop();
       }
     }

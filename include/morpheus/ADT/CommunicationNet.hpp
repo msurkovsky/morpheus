@@ -161,22 +161,22 @@ public:
   CommunicationNet(const CommunicationNet &) = delete;
   CommunicationNet(CommunicationNet &&) = default;
 
-  Place const *add_place(string type, string init_expr, string name="") {
+  Place *add_place(string type, string init_expr, string name="") {
     places.push_back(std::make_unique<Place>(name, type, init_expr));
     return places.back().get();
   }
 
-  Transition const *add_transition(ConditionList cl, string name="") {
+  Transition *add_transition(ConditionList cl, string name="") {
     transitions.push_back(std::make_unique<Transition>(name, cl));
     return transitions.back().get();
   }
 
-  Edge const *add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE) {
+  Edge *add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE) {
     input_edges.push_back(std::make_unique<Edge>(src, dest, type));
     return input_edges.back().get();
   }
 
-  Edge const *add_output_edge(const Transition &src, const Place &dest) {
+  Edge *add_output_edge(const Transition &src, const Place &dest) {
     output_edges.push_back(std::make_unique<Edge>(src, dest, TAKE));
     return output_edges.back().get();
   }

@@ -8,6 +8,7 @@
 #ifndef MRPH_COMM_NET_H
 #define MRPH_COMM_NET_H
 
+#include "llvm/IR/CallSite.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <memory>
@@ -213,6 +214,43 @@ public:
 
 class PluginCommNet : public CommunicationNet {
 
+public:
+  using ID = unsigned int;
+
+protected:
+  static ID generate_id() {
+    static ID id = 0;
+    return ++id;
+  }
+
+  std::string value_to_type(const Value &v) {
+    if (isa<Constant>(v)) {
+      // NOTE: for constant value the type is represented by empty string
+      //       because the constants are used directly without need to store them.
+      return "";
+    }
+    std::string type;
+    raw_string_ostream rso(type);
+    rso << *v.getType();
+    return rso.str();
+  }
+
+  std::string value_to_str(const Value &v, string name, bool return_constant=true) {
+    if (Constant const *c = dyn_cast<Constant>(&v)) {
+      if (return_constant) {
+        string value;
+        raw_string_ostream rso(value);
+        v.printAsOperand(rso, false); // print the constant without the type
+        return rso.str();
+      }
+      return "";
+    }
+    // string value;
+    // raw_string_ostream rso(value);
+    // v.printAsOperand(rso, false); // print used operand
+    // return rso.str();
+    return name;
+  }
 };
 
 class AddressableCommNet : public CommunicationNet {

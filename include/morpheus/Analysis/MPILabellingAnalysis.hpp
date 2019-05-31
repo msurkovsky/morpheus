@@ -28,7 +28,7 @@ namespace llvm {
 
   class MPILabelling {
   public:
-    using MPICheckpoints = std::queue<std::pair<BasicBlock::iterator const, MPICallType>>;
+    using MPICheckpoints = std::queue<std::pair<const CallSite, MPICallType>>;
 
   private:
     enum ExplorationState {
@@ -64,7 +64,7 @@ namespace llvm {
   private:
 
     ExplorationState explore_cgnode(CallGraphNode const *cgn);
-    void save_checkpoint(Instruction *instr, MPICallType call_type);
+    void save_checkpoint(CallSite cs, MPICallType call_type);
 
     template<ExplorationState STATE> bool check_status(Function const *f) const {
       auto search = fn_labels.find(f);

@@ -128,12 +128,12 @@ MPILabelling::explore_cgnode(CallGraphNode const *cgn) {
       case MPI_CALL:
         mpi_calls[call_site.getCalledFunction()->getName()].push_back(call_site);
         inner_es = MPI_INVOLVED;
-        save_checkpoint(call_site.getInstruction(), MPICallType::DIRECT);
+        save_checkpoint(call_site, MPICallType::DIRECT);
         break;
       case MPI_INVOLVED:
       case MPI_INVOLVED_MEDIATELY:
         inner_es = MPI_INVOLVED_MEDIATELY;
-        save_checkpoint(call_site.getInstruction(), MPICallType::INDIRECT);
+        save_checkpoint(call_site, MPICallType::INDIRECT);
         break;
       case PROCESSING:
       case SEQUENTIAL:
@@ -152,11 +152,9 @@ MPILabelling::explore_cgnode(CallGraphNode const *cgn) {
   return res_es;
 }
 
-void MPILabelling::save_checkpoint(Instruction *inst, MPICallType call_type) {
-  assert(CallSite(inst) && "Only call site instruction can be saved.");
-
-  BasicBlock *bb = inst->getParent();
+void MPILabelling::save_checkpoint(CallSite cs, MPICallType call_type) {
+  BasicBlock *bb = cs->getParent();
   assert(bb != nullptr && "Null parent of instruction.");
 
-  bb_mpi_checkpoints[bb].emplace(inst->getIterator(), call_type);
+  bb_mpi_checkpoints[bb].emplace(cs, call_type);
 }

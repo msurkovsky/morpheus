@@ -19,6 +19,7 @@
 using namespace std;
 
 namespace {
+using namespace llvm;
 
 enum EdgeType {
   TAKE,
@@ -32,10 +33,10 @@ enum EdgeType {
 struct Printable {
   virtual ~Printable() = default;
 
-  virtual void print (llvm::raw_ostream &os) const = 0;
+  virtual void print (raw_ostream &os) const = 0;
 };
 
-llvm::raw_ostream &operator<< (llvm::raw_ostream &os, const Printable &printable) {
+raw_ostream &operator<< (raw_ostream &os, const Printable &printable) {
   printable.print(os);
   return os;
 }
@@ -50,7 +51,7 @@ struct Element : public Printable {
   Element(const Element &) = delete;
   Element(Element &&) = default;
 
-  virtual void print (llvm::raw_ostream &os) const {
+  virtual void print (raw_ostream &os) const {
     if (name.empty()) {
       os << this;
     } else {
@@ -77,7 +78,7 @@ struct Edge : public Printable {
   Edge(const Edge &) = delete;
   Edge(Edge &&) = default;
 
-  void print (llvm::raw_ostream &os) const {
+  void print (raw_ostream &os) const {
     os << startpoint << " -> " << endpoint;
   }
 };
@@ -94,7 +95,7 @@ struct Place : Element {
   Place(Place &&) = default;
   ~Place() = default;
 
-  void print (llvm::raw_ostream &os) const {
+  void print (raw_ostream &os) const {
     os << "P(" << id << "): ";
 
     Element::print(os);
@@ -127,7 +128,7 @@ struct Transition : Element {
   Transition(Transition &&) = default;
   ~Transition() = default;
 
-  void print (llvm::raw_ostream &os) const {
+  void print (raw_ostream &os) const {
     os << "T(" << id << "): ";
 
     Element::print(os);
@@ -161,32 +162,32 @@ public:
   CommunicationNet(CommunicationNet &&) = default;
 
   Place const *add_place(string type, string init_expr, string name="") {
-    places.push_back(make_unique<Place>(name, type, init_expr));
+    places.push_back(std::make_unique<Place>(name, type, init_expr));
     return places.back().get();
   }
 
   Transition const *add_transition(ConditionList cl, string name="") {
-    transitions.push_back(make_unique<Transition>(name, cl));
+    transitions.push_back(std::make_unique<Transition>(name, cl));
     return transitions.back().get();
   }
 
   Edge const *add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE) {
-    input_edges.push_back(make_unique<Edge>(src, dest, type));
+    input_edges.push_back(std::make_unique<Edge>(src, dest, type));
     return input_edges.back().get();
   }
 
   Edge const *add_output_edge(const Transition &src, const Place &dest) {
-    output_edges.push_back(make_unique<Edge>(src, dest, TAKE));
+    output_edges.push_back(std::make_unique<Edge>(src, dest, TAKE));
     return output_edges.back().get();
   }
 
   template<typename Startpoint, typename Endpoint>
   Edge const *add_cf_edge(const Startpoint& src, const Endpoint& dest) {
-    control_flow_edges.push_back(make_unique<Edge>(src, dest, TAKE));
+    control_flow_edges.push_back(std::make_unique<Edge>(src, dest, TAKE));
     return control_flow_edges.back().get();
   }
 
-  virtual void print (llvm::raw_ostream &os) const {
+  virtual void print (raw_ostream &os) const {
     os << "Places:\n";
     for (auto &p : places) {
       os << "  " << *p << "\n";
@@ -246,7 +247,7 @@ public:
     //       Q: what is better to enhance CN or define new "extended type?"
   }
 
-  void print (llvm::raw_ostream &os) {
+  void print (raw_ostream &os) {
     os << "Adress: " << address << "\n";
     os << "------------------------------------------------------------\n";
     CommunicationNet::print(os);

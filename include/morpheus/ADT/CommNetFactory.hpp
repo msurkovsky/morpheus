@@ -13,6 +13,28 @@
 namespace {
 using namespace llvm;
 
+class EmptyCommNet : public PluginCommNet {
+
+  Place &entry_p;
+  Place &exit_p;
+
+public:
+  EmptyCommNet()
+    : entry_p(*add_place("Unit", "")),
+      exit_p(*add_place("Unit", "")) { }
+  EmptyCommNet(const EmptyCommNet &) = delete;
+  EmptyCommNet(EmptyCommNet &&) = default;
+
+  Place &entry_place() {
+    return entry_p;
+  }
+
+  Place &exit_place() {
+    return exit_p;
+  }
+};
+
+
 class BaseSendRecv : public PluginCommNet {
 
 protected:
@@ -80,15 +102,25 @@ class CN_MPI_Isend : public BaseSendRecv {
   Place &send_setting; // INPUT
   Place &send_data;    // INPUT
   Place &send_reqst;   // OUTPUT
+  Place &send_exit;   // unit exit place
   Transition &send;
 
 public:
+
+  Place &entry_place() {
+    return send_setting;
+  }
+
+  Place &exit_place() {
+    return send_exit;
+  }
 
   CN_MPI_Isend(const CallSite &cs)
     : name_prefix("send" + std::to_string(get_id())),
       send_setting(*add_place("<empty>", "", name_prefix + "_setting")),
       send_data(*add_place("<empty>", "", name_prefix + "_data")),
       send_reqst(*add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
+      send_exit(*add_place("Unit", "", name_prefix + "_exit")),
       send(*add_transition({}, name_prefix)) {
 
     Value *datatype = cs.getArgument(2);
@@ -107,17 +139,15 @@ public:
 
 struct CommNetFactory {
 
-  CommNetFactory() = delete;
-
-  static PluginCommNet createCommNet(const CallSite &cs) {
+  static std::unique_ptr<PluginCommNet> createCommNet(const CallSite &cs) {
     Function *f = cs.getCalledFunction();
     assert (f->hasName() && "The CommNetFactory expects call site with a named function");
 
     StringRef call_name = f->getName();
     if (call_name == "MPI_Isend" || call_name == "MPI_Send" /* TODO: remove MPI_Send */) {
-      return CN_MPI_Isend(cs);
+      return std::make_unique<CN_MPI_Isend>(cs);
     }
-    return PluginCommNet();
+    return std::make_unique<EmptyCommNet>();
   }
 };
 

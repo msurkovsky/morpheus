@@ -34,8 +34,8 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
     while (!checkpoints.empty()) {
       auto checkpoint = checkpoints.front();
       if (checkpoint.second == MPICallType::DIRECT) { // TODO: first solve direct calls
-        PluginCommNet pcn = CommNetFactory::createCommNet(checkpoint.first);
-        pcn.print(errs());
+        std::unique_ptr<PluginCommNet> pcn = CommNetFactory::createCommNet(checkpoint.first);
+        pcn->print(errs());
         errs() << "\t" << *checkpoint.first.getInstruction() << "\n"; // instruction
         checkpoints.pop();
       }

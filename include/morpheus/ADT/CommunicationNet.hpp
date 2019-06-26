@@ -242,6 +242,11 @@ public:
   ID get_id() {
     return id;
   }
+
+  virtual Place &entry_place() = 0;
+  virtual Place &exit_place() = 0;
+  // virtual std::vector<Place *> unprocessed_places();
+
 protected:
   std::string value_to_type(const Value &v, bool return_constant=true) {
     if (isa<Constant>(v) && !return_constant) {

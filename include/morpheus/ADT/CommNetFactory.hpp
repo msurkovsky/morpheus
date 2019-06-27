@@ -19,9 +19,11 @@ class EmptyCommNet : public PluginCommNet {
   Place &exit_p;
 
 public:
+
   EmptyCommNet()
-    : entry_p(*add_place("Unit", "")),
-      exit_p(*add_place("Unit", "")) { }
+    : entry_p(add_place("Unit", "")),
+      exit_p(add_place("Unit", "")) { }
+
   EmptyCommNet(const EmptyCommNet &) = delete;
   EmptyCommNet(EmptyCommNet &&) = default;
 
@@ -117,11 +119,11 @@ public:
 
   CN_MPI_Isend(const CallSite &cs)
     : name_prefix("send" + std::to_string(get_id())),
-      send_setting(*add_place("<empty>", "", name_prefix + "_setting")),
-      send_data(*add_place("<empty>", "", name_prefix + "_data")),
-      send_reqst(*add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
-      send_exit(*add_place("Unit", "", name_prefix + "_exit")),
-      send(*add_transition({}, name_prefix)) {
+      send_setting(add_place("<empty>", "", name_prefix + "_setting")),
+      send_data(add_place("<empty>", "", name_prefix + "_data")),
+      send_reqst(add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
+      send_exit(add_place("Unit", "", name_prefix + "_exit")),
+      send(add_transition({}, name_prefix)) {
 
     Value *datatype = cs.getArgument(2);
     compute_data_buffer_info(*datatype);

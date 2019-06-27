@@ -172,30 +172,30 @@ public:
   CommunicationNet(const CommunicationNet &) = delete;
   CommunicationNet(CommunicationNet &&) = default;
 
-  Place *add_place(string type, string init_expr, string name="") {
+  Place &add_place(string type, string init_expr, string name="") {
     places.push_back(std::make_unique<Place>(name, type, init_expr));
-    return places.back().get();
+    return *places.back();
   }
 
-  Transition *add_transition(ConditionList cl, string name="") {
+  Transition &add_transition(ConditionList cl, string name="") {
     transitions.push_back(std::make_unique<Transition>(name, cl));
-    return transitions.back().get();
+    return *transitions.back();
   }
 
-  Edge *add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE, std::string ae="") {
+  Edge &add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE, std::string ae="") {
     input_edges.push_back(std::make_unique<Edge>(src, dest, type, ae));
-    return input_edges.back().get();
+    return *input_edges.back();
   }
 
-  Edge *add_output_edge(const Transition &src, const Place &dest, std::string ae="") {
+  Edge &add_output_edge(const Transition &src, const Place &dest, std::string ae="") {
     output_edges.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
-    return output_edges.back().get();
+    return *output_edges.back();
   }
 
   template<typename Startpoint, typename Endpoint>
-  Edge const *add_cf_edge(const Startpoint& src, const Endpoint& dest, std::string ae="") {
+  Edge const &add_cf_edge(const Startpoint& src, const Endpoint& dest, std::string ae="") {
     control_flow_edges.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
-    return control_flow_edges.back().get();
+    return *control_flow_edges.back();
   }
 
   virtual void print (raw_ostream &os) const {
@@ -320,10 +320,10 @@ class AddressableCommNet : public CommunicationNet {
 public:
   AddressableCommNet(Address address)
     : address(address),
-      asr(*add_place("MessageToken", "", "Active Send Request")),
-      arr(*add_place("MessageRequest", "", "Active Receive Request")),
-      csr(*add_place("MessageRequest", "", "Completed Send Request")),
-      crr(*add_place("MessageToken", "", "Completed Receive Request")) { }
+      asr(add_place("MessageToken", "", "Active Send Request")),
+      arr(add_place("MessageRequest", "", "Active Receive Request")),
+      csr(add_place("MessageRequest", "", "Completed Send Request")),
+      crr(add_place("MessageToken", "", "Completed Receive Request")) { }
 
   AddressableCommNet(const AddressableCommNet &) = delete;
   AddressableCommNet(AddressableCommNet &&) = default;

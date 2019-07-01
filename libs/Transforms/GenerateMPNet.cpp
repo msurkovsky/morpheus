@@ -44,7 +44,7 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
     }
   }
 
-  acn.add_cf_edge(*acn.entry_place(), *acn.exit_place());
+  acn.add_cf_edge(acn.entry_place(), acn.exit_place());
   acn.print(errs());
 
   return PreservedAnalyses::none(); // TODO: check which analyses have been broken?

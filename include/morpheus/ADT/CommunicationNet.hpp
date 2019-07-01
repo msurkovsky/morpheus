@@ -379,12 +379,12 @@ public:
     return id;
   }
 
-  Place *entry_place() {
-    return entry_p;
+  Place &entry_place() {
+    return *entry_p;
   };
 
-  Place *exit_place() {
-    return exit_p;
+  Place &exit_place() {
+    return *exit_p;
   };
 
   void set_entry_place(Place *p) {
@@ -419,10 +419,10 @@ public:
     }
 
     // join entry & exit places
-    add_cf_edge(*entry_place(), *pcn->entry_place());
+    add_cf_edge(entry_place(), pcn->entry_place());
 
     // set the new entry as the exit of injected net
-    set_entry_place(pcn->exit_place());
+    set_entry_place(&pcn->exit_place());
   }
 
   virtual void print(raw_ostream &os) const {

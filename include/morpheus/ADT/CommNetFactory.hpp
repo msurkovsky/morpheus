@@ -17,7 +17,7 @@ class EmptyCommNet : public PluginCommNet {
 
 public:
   EmptyCommNet() {
-    add_cf_edge(*entry_place(), *exit_place());
+    add_cf_edge(entry_place(), exit_place());
   }
   EmptyCommNet(const EmptyCommNet &) = delete;
   EmptyCommNet(EmptyCommNet &&) = default;
@@ -114,8 +114,8 @@ public:
     add_input_edge(send_data, send, TAKE, from_data_ae);
     add_input_edge(send_setting, send, TAKE, from_setting_ae);
 
-    add_cf_edge(*entry_place(), send_setting);
-    add_cf_edge(send_exit, *exit_place());
+    add_cf_edge(entry_place(), send_setting);
+    add_cf_edge(send_exit, exit_place());
   }
 
   virtual void connect_asr(const Place &p) {

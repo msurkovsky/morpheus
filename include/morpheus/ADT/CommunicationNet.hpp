@@ -46,45 +46,58 @@ raw_ostream &operator<< (raw_ostream &os, const Printable &printable) {
   return os;
 }
 
-struct Element : public Printable {
-  using ID = unsigned int;
+
+struct Identifiable {
+  using ID = std::string;
 
   const ID id;
+
+  Identifiable() : id(generate_id()) { }
+
+  virtual ~Identifiable() = default;
+
+private:
+  static ID generate_id() {
+    static unsigned int id = 0;
+    return std::to_string(++id);
+  }
+};
+
+
+struct NetElement : public Identifiable, public Printable {
   string name;
 
-  Element(string name) : id(get_id()), name(name) { }
-  Element(const Element &) = delete;
-  Element(Element &&) = default;
+  NetElement(string name) : name(name) { }
+  NetElement(const NetElement &) = delete;
+  NetElement(NetElement &&) = default;
+
+  virtual ~NetElement() = default;
 
   virtual void print (raw_ostream &os) const {
     if (name.empty()) {
-      os << this;
+      os << this; // print pointer value
     } else {
       os << name;
     }
-  }
-
-private:
-  static ID get_id() {
-    static ID id = 0;
-    return ++id;
   }
 };
 
 
 struct Edge : public Printable {
-  const Element &startpoint;
-  const Element &endpoint;
-  EdgeType type;
+  const NetElement &startpoint;
+  const NetElement &endpoint;
+  EdgeType type; // TODO: maybe define separates types for it
   std::string arc_expr;
 
-  explicit Edge(const Element &startpoint, const Element &endpoint,
+  explicit Edge(const NetElement &startpoint, const NetElement &endpoint,
                 EdgeType type, std::string arc_expr)
     : startpoint(startpoint), endpoint(endpoint),
       type(type), arc_expr(arc_expr) { }
 
   Edge(const Edge &) = delete;
   Edge(Edge &&) = default;
+
+  virtual ~Edge() = default;
 
   void print (raw_ostream &os) const {
     if (arc_expr.empty()) {
@@ -96,21 +109,22 @@ struct Edge : public Printable {
 };
 
 
-struct Place : Element {
+struct Place : NetElement {
   string type;
   string init_expr;
 
   explicit Place(string name, string type, string init_expr)
-    : Element(name), type(type), init_expr(init_expr) { }
+    : NetElement(name), type(type), init_expr(init_expr) { }
 
   Place(const Place &) = delete;
   Place(Place &&) = default;
-  ~Place() = default;
 
-  void print (raw_ostream &os) const {
+  virtual ~Place() = default;
+
+  virtual void print (raw_ostream &os) const {
     os << "P(" << id << "): ";
 
-    Element::print(os);
+    NetElement::print(os);
 
     os << "<";
     if (!type.empty()) {
@@ -129,21 +143,22 @@ struct Place : Element {
 
 using ConditionList = vector<string>;
 
-struct Transition : Element {
+struct Transition : NetElement {
   string name;
   const ConditionList guard;
 
   explicit Transition(string name, const ConditionList guard)
-    : Element(name), guard(guard) { }
+    : NetElement(name), guard(guard) { }
 
   Transition(const Transition &) = delete;
   Transition(Transition &&) = default;
-  ~Transition() = default;
 
-  void print (raw_ostream &os) const {
+  virtual ~Transition() = default;
+
+  virtual void print (raw_ostream &os) const {
     os << "T(" << id << "): ";
 
-    Element::print(os);
+    NetElement::print(os);
 
     os << "[";
     if (std::distance(guard.begin(), guard.end()) > 0) {
@@ -160,7 +175,7 @@ struct Transition : Element {
 
 // ==============================================================================
 
-class CommunicationNet : public Printable {
+class CommunicationNet : public Identifiable, public Printable {
 
 public:
   using places_iterator = vector<unique_ptr<Place>>::iterator;
@@ -314,6 +329,8 @@ public:
   }
 
   virtual void print (raw_ostream &os) const {
+    os << "CommunicationNet(" << id << "):\n";
+
     if (!places_empty()) {
       os << "Places:\n";
       for (auto &p : places()) {
@@ -357,27 +374,16 @@ public:
   using ID = unsigned int;
 
 private:
-  const ID id;
-  static ID generate_id() {
-    static ID _id = 0;
-    return ++_id;
-  }
-
   Place *entry_p;
   Place *exit_p;
 
 public:
   PluginCommNet()
-    : id(generate_id()),
-      entry_p(&add_place("Unit", "", "entry_" + std::to_string(get_id()))),
-      exit_p(&add_place("Unit", "", "exit" + std::to_string(get_id()))) { }
+    : entry_p(&add_place("Unit", "", "entry" + id)),
+      exit_p(&add_place("Unit", "", "exit" + id)) { }
 
   PluginCommNet(const PluginCommNet &) = delete;
   PluginCommNet(PluginCommNet &&) = default;
-
-  ID get_id() {
-    return id;
-  }
 
   Place &entry_place() {
     return *entry_p;
@@ -429,6 +435,7 @@ public:
     CommunicationNet::print(os);
   }
 
+  // TODO: Plugin net does not know about these!
   virtual void connect_asr(const Place &asr_p) { };
   virtual void connect_arr(const Place &arr_p) { };
   virtual void connect_csr(const Place &csr_p) { };

@@ -95,7 +95,7 @@ class CN_MPI_Isend : public BaseSendRecv {
 
 public:
   CN_MPI_Isend(const CallSite &cs)
-    : name_prefix("send" + std::to_string(get_id())),
+    : name_prefix("send" + id),
       send_setting(add_place("<empty>", "", name_prefix + "_setting")),
       send_data(add_place("<empty>", "", name_prefix + "_data")),
       send_reqst(add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
@@ -135,7 +135,7 @@ class CN_MPI_Wait : public BaseSendRecv {
 
 public:
   CN_MPI_Wait(const CallSite &cs)
-    : name_prefix("wait" + std::to_string(get_id())),
+    : name_prefix("wait" + id),
       wait(add_transition({}, name_prefix)) { }
 
   virtual void connect_csr(const Place &p) {

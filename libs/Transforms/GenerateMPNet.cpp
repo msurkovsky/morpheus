@@ -45,6 +45,8 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
   }
 
   acn.print(errs());
+  acn.collapse();
+  acn.print(errs());
 
   return PreservedAnalyses::none(); // TODO: check which analyses have been broken?
 }

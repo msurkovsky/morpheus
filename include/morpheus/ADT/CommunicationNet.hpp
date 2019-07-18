@@ -72,8 +72,11 @@ private:
 };
 
 
+struct Edge;
+
 struct NetElement : public Identifiable, public Printable {
   string name;
+  vector<unique_ptr<Edge>> leads_to;
 
   virtual ~NetElement() = default;
 
@@ -199,11 +202,9 @@ class CommunicationNet : public Identifiable,
 public:
   using places_iterator      = Elements<Place>::iterator;
   using transitions_iterator = Elements<Transition>::iterator;
-  using edges_iterator       = Elements<Edge>::iterator;
 
   using const_places_iterator      = Elements<Place>::const_iterator;
   using const_transitions_iterator = Elements<Transition>::const_iterator;
-  using const_edges_iterator       = Elements<Edge>::const_iterator;
 
   virtual ~CommunicationNet() = default;
 
@@ -229,37 +230,22 @@ public:
     return add_(move(t), transitions_);
   }
 
-  Edge& add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE, string ae="") {
-    return add_(make_element_<Edge>(src, dest, type, ae), input_edges_);
+  Edge& add_input_edge(Place &src, Transition &dest, EdgeType type=TAKE, string ae="") {
+    return add_edge_(src, dest, type, ae);
   }
 
-  Edge& add_input_edge(unique_ptr<Edge> e) {
-    return add_(move(e), input_edges_);
-  }
-
-  Edge& add_output_edge(const Transition &src, const Place &dest, string ae="") {
-    return add_(make_element_<Edge>(src, dest, TAKE, ae), output_edges_);
-  }
-
-  Edge& add_output_edge(unique_ptr<Edge> e) {
-    return add_(move(e), output_edges_);
+  Edge& add_output_edge(Transition &src, Place &dest, string ae="") {
+    return add_edge_(src, dest, TAKE, ae);
   }
 
   template<typename Startpoint, typename Endpoint>
-  Edge& add_cf_edge(const Startpoint& src, const Endpoint& dest, string ae="") {
-    return add_(make_element_<Edge>(src, dest, TAKE, ae), cf_edges_);
-  }
-
-  Edge &add_cf_edge(unique_ptr<Edge> e) {
-    return add_(move(e), cf_edges_);
+  Edge& add_cf_edge(Startpoint& src, Endpoint& dest) {
+    return add_edge_(src, dest, TAKE, "");
   }
 
   void takeover(CommunicationNet cn) {
     takeover_(places_, cn.places());
     takeover_(transitions_, cn.transitions());
-    takeover_(input_edges_, cn.input_edges());
-    takeover_(output_edges_, cn.output_edges());
-    takeover_(cf_edges_, cn.control_flow_edges());
   }
 
   virtual void print (raw_ostream &os) const {
@@ -300,30 +286,6 @@ public:
     return make_range(transitions_.begin(), transitions_.end());
   }
 
-  iterator_range<edges_iterator> input_edges() {
-    return make_range(input_edges_.begin(), input_edges_.end());
-  }
-
-  iterator_range<const_edges_iterator> input_edges() const {
-    return make_range(input_edges_.begin(), input_edges_.end());
-  }
-
-  iterator_range<edges_iterator> output_edges() {
-    return make_range(output_edges_.begin(), output_edges_.end());
-  }
-
-  iterator_range<const_edges_iterator> output_edges() const {
-    return make_range(output_edges_.begin(), output_edges_.end());
-  }
-
-  iterator_range<edges_iterator> control_flow_edges() {
-    return make_range(cf_edges_.begin(), cf_edges_.end());
-  }
-
-  iterator_range<const_edges_iterator> control_flow_edges() const {
-    return make_range(cf_edges_.begin(), cf_edges_.end());
-  }
-
 private:
   template <typename T, typename... Args>
   Element<T> make_element_(Args&&... args) {
@@ -331,9 +293,14 @@ private:
   }
 
   template <typename T>
-  T& add_(Element<T> e, Elements<T> &elements) {
-    elements.push_back(move(e));
+  T& add_(Element<T> &&e, Elements<T> &elements) {
+    elements.push_back(forward<Element<T>>(e));
     return *elements.back();
+  }
+
+  template <typename Startpoint, typename Endpoint>
+  Edge& add_edge_(Startpoint &start, Endpoint &end, EdgeType type, string ae) {
+    return add_(make_element_<Edge>(start, end, type, ae), start.leads_to);
   }
 
   template <typename T>
@@ -357,10 +324,6 @@ private:
 
   Elements<Place> places_;
   Elements<Transition> transitions_;
-
-  Elements<Edge> input_edges_;
-  Elements<Edge> output_edges_;
-  Elements<Edge> cf_edges_;
 };
 
 // =============================================================================

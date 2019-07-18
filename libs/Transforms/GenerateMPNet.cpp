@@ -25,7 +25,7 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
 
 
   // TODO: take rank/address value from the input code
-  AddressableCN acn(1);
+  cn::AddressableCN acn(1);
 
   auto bfs_it = breadth_first(scope_fn);
   for (const BasicBlock *bb : bfs_it) {
@@ -35,7 +35,7 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
       auto checkpoint = checkpoints.front();
       if (checkpoint.second == MPICallType::DIRECT) { // TODO: first solve direct calls
 
-        PluginCNGeneric pcn = CNFactory::createCommSubnet(checkpoint.first);
+        cn::PluginCNGeneric pcn = cn::createCommSubnet(checkpoint.first);
         std::move(pcn).inject_into(acn); // acn takes over the pcn elements
 
         /* TODO: remove */ errs() << "\t" << *checkpoint.first.getInstruction() << "\n"; // instruction

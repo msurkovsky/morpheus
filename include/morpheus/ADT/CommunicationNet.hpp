@@ -23,16 +23,22 @@
 
 using namespace std;
 
-namespace {
+namespace cn {
 using namespace llvm;
 
 enum EdgeType {
-  TAKE,
+  SINGLE_HEADED,
   // just for input edges
-  FORCE_TAKE,
-  READ_ONLY,
-  FORCE_READY_ONLY,
+  DOUBLE_HEADED,
+  SINGLE_HEADED_RO,
+  DOUBLE_HEADED_RO,
   SHUFFLE,
+  SHUFFLE_RO,
+};
+
+enum EdgeCategory {
+  REGULAR,
+  CONTROL_FLOW,
 };
 
 struct Printable {
@@ -63,10 +69,7 @@ struct Identifiable {
   }
 
 private:
-  static ID generate_id() {
-    static unsigned int id = 0;
-    return std::to_string(++id);
-  }
+  static ID generate_id();
 
   ID id;
 };
@@ -75,8 +78,6 @@ private:
 struct Edge;
 
 struct NetElement : public Identifiable, public Printable {
-  string name;
-  vector<unique_ptr<Edge>> leads_to;
 
   virtual ~NetElement() = default;
 
@@ -88,44 +89,40 @@ struct NetElement : public Identifiable, public Printable {
 
   virtual string get_element_type() const = 0;
 
-  virtual void print (raw_ostream &os) const {
-    if (name.empty()) {
-      os << this; // print pointer value
-    } else {
-      os << name;
-    }
-  }
+  virtual void print (raw_ostream &os) const;
+
+  string name;
+  vector<unique_ptr<Edge>> leads_to;
 };
 
 
 struct Edge final : public Printable {
-  NetElement &startpoint;
-  NetElement &endpoint;
-  EdgeType type; // TODO: maybe define separates types for it
-  string arc_expr;
 
-  explicit Edge(NetElement &startpoint, NetElement &endpoint,
-                EdgeType type, string arc_expr)
-    : startpoint(startpoint), endpoint(endpoint),
-      type(type), arc_expr(arc_expr) { }
+  explicit Edge(NetElement &startpoint, NetElement &endpoint, string arc_expr,
+                EdgeCategory category, EdgeType type)
+    : startpoint(startpoint), endpoint(endpoint), arc_expr(arc_expr),
+      category(category), type(type) { }
   Edge(const Edge &) = delete;
   Edge(Edge &&) = default;
   Edge& operator=(const Edge &) = delete;
   Edge& operator=(Edge &&) = default;
 
-  void print (raw_ostream &os) const {
-    if (arc_expr.empty()) {
-      os << startpoint << " -> " << endpoint;
-    } else {
-      os << startpoint << " --/ " << arc_expr << " /--> " << endpoint;
-    }
-  }
+  inline EdgeCategory get_category() const { return category; }
+  inline EdgeType     get_type()     const { return type; }
+
+  void print (raw_ostream &os) const;
+
+  NetElement &startpoint;
+  NetElement &endpoint;
+  string arc_expr;
+
+private:
+  EdgeCategory category;
+  EdgeType type;
 };
 
 
 struct Place final : NetElement {
-  string type;
-  string init_expr;
 
   explicit Place(string name, string type, string init_expr)
     : NetElement(name), type(type), init_expr(init_expr) { }
@@ -138,31 +135,16 @@ struct Place final : NetElement {
     return "place_t";
   }
 
-  void print (raw_ostream &os) const {
-    os << "P(" << get_id() << "): ";
+  void print (raw_ostream &os) const;
 
-    NetElement::print(os);
-
-    os << "<";
-    if (!type.empty()) {
-      os << type;
-    }
-    os << ">";
-
-    os << "[";
-    if (!init_expr.empty()) {
-      os << init_expr;
-    }
-    os << "]";
-  }
+  string type;
+  string init_expr;
 };
 
 
 using ConditionList = vector<string>;
 
 struct Transition final : NetElement {
-  string name;
-  ConditionList guard;
 
   explicit Transition(string name, const ConditionList guard)
     : NetElement(name), guard(guard) { }
@@ -175,21 +157,10 @@ struct Transition final : NetElement {
     return "transition_t";
   }
 
-  void print (raw_ostream &os) const {
-    os << "T(" << get_id() << "): ";
+  void print (raw_ostream &os) const;
 
-    NetElement::print(os);
-
-    os << "[";
-    if (std::distance(guard.begin(), guard.end()) > 0) {
-      auto it = guard.begin();
-      for (; std::distance(it, guard.end()) > 1; it++) {
-        os << *it << ", ";
-      }
-      os << *it;
-    }
-    os << "]";
-  }
+  string name;
+  ConditionList guard;
 };
 
 
@@ -205,13 +176,15 @@ class CommunicationNet : public Identifiable,
   template <typename T>
   using Elements = vector<Element<T>>;
 
+  // EdgePredicate is used to filter a category of edges
+  template <EdgeCategory C>
+  struct EdgePredicate {
+    bool operator()(const Edge &e) {
+      return e.get_category() == C;
+    }
+  };
+
 public:
-  using places_iterator      = Elements<Place>::iterator;
-  using transitions_iterator = Elements<Transition>::iterator;
-
-  using const_places_iterator      = Elements<Place>::const_iterator;
-  using const_transitions_iterator = Elements<Transition>::const_iterator;
-
   virtual ~CommunicationNet() = default;
 
   CommunicationNet() = default;
@@ -219,6 +192,9 @@ public:
   CommunicationNet(CommunicationNet &&) = default;
   CommunicationNet& operator=(const CommunicationNet &) = delete;
   CommunicationNet& operator=(CommunicationNet &&) = default;
+
+  virtual void print (raw_ostream &os) const;
+  virtual void collapse();
 
   Place& add_place(string type, string init_expr, string name="") {
     return add_(make_element_<Place>(name, type, init_expr), places_);
@@ -236,17 +212,18 @@ public:
     return add_(move(t), transitions_);
   }
 
-  Edge& add_input_edge(Place &src, Transition &dest, EdgeType type=TAKE, string ae="") {
-    return add_edge_(src, dest, type, ae);
+  Edge& add_input_edge(Place &src, Transition &dest, string ae="",
+                       EdgeType type=SINGLE_HEADED) {
+    return add_edge_(src, dest, ae, REGULAR, type);
   }
 
   Edge& add_output_edge(Transition &src, Place &dest, string ae="") {
-    return add_edge_(src, dest, TAKE, ae);
+    return add_edge_(src, dest, ae, REGULAR, SINGLE_HEADED);
   }
 
   template<typename Startpoint, typename Endpoint>
   Edge& add_cf_edge(Startpoint& src, Endpoint& dest) {
-    return add_edge_(src, dest, TAKE, "");
+    return add_edge_(src, dest, "", CONTROL_FLOW, SINGLE_HEADED);
   }
 
   void takeover(CommunicationNet cn) {
@@ -254,70 +231,22 @@ public:
     takeover_(transitions_, cn.transitions());
   }
 
-  void collapse() {
-    CommunicationNet tmp_cn;
-
-    size_t p_idx = 0;
-    while (p_idx < places_.size()) {
-      Place &p = *places_[p_idx];
-      if (p.type == "Unit" && p.leads_to.size() == 1) {
-
-        Edge &e = *p.leads_to.back();
-        if (e.endpoint.get_element_type() == "place_t") { // TODO: "place_t" move to the static variable into Place
-          Place &endpoint = static_cast<Place&>(e.endpoint);
-          if (endpoint.type == "Unit") {
-            p_idx++; // skip the place and continue with another one
-            continue;
-          }
-        }
-      }
-
-      // overtake place
-      tmp_cn.add_place(move(places_[p_idx]));
-      p_idx++;
-    } // end of collapsing `P<Unit> --( cf_edge )--> P<Unit>` pattern
-
-    // takes over all transitions
-    tmp_cn.takeover_(tmp_cn.transitions_, transitions());
-
-    std::swap(tmp_cn, *this);
-  }
-
-  virtual void print (raw_ostream &os) const {
-    os << "CommunicationNet(" << get_id() << "):\n";
-
-    os << "Places:\n";
-    print_(places_, os, 2);
-
-    os << "Transitions:\n";
-    print_(transitions_, os, 2);
-
-    os << "Input edges:\n";
-    print_(input_edges_, os, 2);
-
-    os << "Outuput edges:\n";
-    print_(output_edges_, os, 2);
-
-    os << "CF edges:\n";
-    print_(cf_edges_, os, 2);
-  }
-
   // -------------------------------------------------------
   // iterators
 
-  iterator_range<places_iterator> places() {
+  iterator_range<typename Elements<Place>::iterator> places() {
     return make_range(places_.begin(), places_.end());
   }
 
-  iterator_range<const_places_iterator> places() const {
+  iterator_range<typename Elements<Place>::const_iterator> places() const {
     return make_range(places_.begin(), places_.end());
   }
 
-  iterator_range<transitions_iterator> transitions() {
+  iterator_range<typename Elements<Transition>::iterator> transitions() {
     return make_range(transitions_.begin(), transitions_.end());
   }
 
-  iterator_range<const_transitions_iterator> transitions() const {
+  iterator_range<typename Elements<Transition>::const_iterator> transitions() const {
     return make_range(transitions_.begin(), transitions_.end());
   }
 
@@ -328,33 +257,44 @@ private:
   }
 
   template <typename T>
-  T& add_(Element<T> &&e, Elements<T> &elements) {
+  inline T& add_(Element<T> &&e, Elements<T> &elements) {
     elements.push_back(forward<Element<T>>(e));
     return *elements.back();
   }
 
   template <typename Startpoint, typename Endpoint>
-  Edge& add_edge_(Startpoint &start, Endpoint &end, EdgeType type, string ae) {
-    return add_(make_element_<Edge>(start, end, type, ae), start.leads_to);
+  inline Edge& add_edge_(Startpoint &start, Endpoint &end, string ae,
+                  EdgeCategory category, EdgeType type) {
+    return add_(make_element_<Edge>(start, end, ae, category, type), start.leads_to);
   }
 
   template <typename T>
-  void takeover_(Elements<T> &target, iterator_range<typename Elements<T>::iterator> src) {
+  inline void takeover_(Elements<T> &target, iterator_range<typename Elements<T>::iterator> src) {
     move(src.begin(), src.end(), back_inserter(target));
+  }
+
+  // ---------------------------------------------------------------------------
+  // print elements
+
+  template <typename T>
+  void print_(const Element<T> &elem, raw_ostream &os, size_t pos=0) const {
+    os << std::string(pos, ' ') << *elem;
   }
 
   template <typename T>
   void print_(const Elements<T> &elements, raw_ostream &os, size_t pos=0) const {
     for (const auto &e : elements) {
-      os << std::string(pos, ' ');
-      print_(e, os);
-      os << "\n";
+      os << std::string(pos, ' ') << *e << "\n";
     }
   }
 
-  template <typename T>
-  void print_(const Element<T> &elem, raw_ostream &os, size_t pos=0) const {
-    os << std::string(pos, ' ') << *elem; // Element<T> = unique_ptr<T>
+  template <typename T, typename UnaryPredicate>
+  void print_(const Elements<T> &elements, raw_ostream &os, size_t pos, UnaryPredicate pred) const {
+    for (const auto &e : elements) {
+      if (pred(*e)) {
+        os << std::string(pos, ' ') << *e << "\n";
+      }
+    }
   }
 
   Elements<Place> places_;
@@ -399,21 +339,11 @@ struct AddressableCN final : public CommunicationNet {
   // AddressableCN follows the interface of PluginCN in the sense that it has
   // also entry and exit places. But cannot be injected!
 
-  Place& entry_place() {
-    return *entry_p_;
-  }
+  Place& entry_place() { return *entry_p_; }
+  Place& exit_place() { return *exit_p_; }
 
-  Place& exit_place() {
-    return *exit_p_;
-  }
-
-  void set_entry(Place *p) {
-    entry_p_ = p;
-  }
-
-  void set_exit(Place *p) {
-    exit_p_ = p;
-  }
+  void set_entry(Place *p) { entry_p_ = p; }
+  void set_exit(Place *p) { exit_p_ = p; }
 
 private:
   Place *entry_p_;
@@ -449,29 +379,18 @@ public:
     self_->add_cf_edge_(src, dest);
   }
 
-  void takeover(CommunicationNet cn) {
-    self_->takeover_(move(cn));
-  }
+  void takeover(CommunicationNet cn) { self_->takeover_(move(cn)); }
 
-  Place& entry_place() {
-    return self_->entry_place_();
-  }
+  Place& entry_place() { return self_->entry_place_(); }
+  Place& exit_place() { return self_->exit_place_(); }
 
-  Place& exit_place() {
-    return self_->exit_place_();
-  }
+  void set_entry(Place *p) { self_->set_entry_(p); }
+  void set_exit(Place *p) { self_->set_exit_(p); }
 
-  void set_entry(Place *p) {
-    self_->set_entry_(p);
-  }
+  void print(raw_ostream &os) const { self_->print_(os); }
 
-  void set_exit(Place *p) {
-    self_->set_exit_(p);
-  }
-
-  void print(raw_ostream &os) const {
-    self_->print_(os);
-  }
+  // ---------------------------------------------------------------------------
+  // interface and model implementation of pluggable types
 
 private:
   struct pluggable_t { // interface of pluggable CNs
@@ -564,21 +483,11 @@ public:
     plug_in_(pcn);
   }
 
-  Place& entry_place() {
-    return *entry_p_;
-  }
+  Place& entry_place() { return *entry_p_; }
+  Place& exit_place() { return *exit_p_; }
 
-  Place& exit_place() {
-    return *exit_p_;
-  }
-
-  void set_entry(Place *p) {
-    entry_p_ = p;
-  }
-
-  void set_exit(Place *p) {
-    exit_p_ = p;
-  }
+  void set_entry(Place *p) { entry_p_ = p; }
+  void set_exit(Place *p) { exit_p_ = p; }
 
 private:
   template <typename PluggableCN>

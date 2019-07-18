@@ -1,5 +1,6 @@
 add_subdirectory (Analysis)
 add_subdirectory (Transforms)
+add_subdirectory (ADT)
 
 add_library(Morph MODULE
   morph.cpp
@@ -11,5 +12,5 @@ target_include_directories (Morph SYSTEM PRIVATE
   ${USED_LLVM_INCLUDES}
   )
 
-target_link_libraries (Morph MPIRelAnalysis MPIRelTransforms)
+target_link_libraries (Morph MorphADT MPIRelAnalysis MPIRelTransforms)
 

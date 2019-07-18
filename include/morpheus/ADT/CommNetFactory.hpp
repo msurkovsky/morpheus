@@ -10,7 +10,7 @@
 
 #include <functional>
 
-namespace {
+namespace cn {
 using namespace llvm;
 
 // ------------------------------------------------------------------------------
@@ -72,7 +72,7 @@ struct CN_MPI_Isend : public PluginCNBase {
       compute_data_buffer_type(*datatype) + "," +
       compute_envelope_type(nullptr, dest, *tag) + ")";
 
-    add_input_edge(send_params, send, TAKE,
+    add_input_edge(send_params, send,
                    "(" + compute_data_buffer_value(*datatype, *size) + ","
                        + compute_envelope_value(nullptr, dest, *tag, false) + ")");
 
@@ -120,7 +120,7 @@ struct CN_MPI_Wait : public PluginCNBase {
   CN_MPI_Wait(CN_MPI_Wait &&) = default;
 
   virtual void connect(const AddressableCN &acn) {
-    add_input_edge(acn.csr /* TODO: choose according to type */, wait, SHUFFLE, "TODO:");
+    add_input_edge(acn.csr /* TODO: choose according to type */, wait, "TODO:", SHUFFLE);
   }
 };
 
@@ -128,19 +128,16 @@ struct CN_MPI_Wait : public PluginCNBase {
 // ===========================================================================
 // CNs factory
 
-struct CNFactory {
+PluginCNGeneric createCommSubnet(const CallSite &cs) {
+  Function *f = cs.getCalledFunction();
+  assert (f->hasName() && "The CNFactory expects call site with a named function");
 
-  static PluginCNGeneric createCommSubnet(const CallSite &cs) {
-    Function *f = cs.getCalledFunction();
-    assert (f->hasName() && "The CNFactory expects call site with a named function");
-
-    StringRef call_name = f->getName();
-    if (call_name == "MPI_Isend" || call_name == "MPI_Send" /* TODO: remove MPI_Send */) {
-      return CN_MPI_Isend(cs);
-    }
-    return EmptyCN();
+  StringRef call_name = f->getName();
+  if (call_name == "MPI_Isend" || call_name == "MPI_Send" /* TODO: remove MPI_Send */) {
+    return CN_MPI_Isend(cs);
   }
-};
+  return EmptyCN();
+}
 
 } // end of anonymous namespace
 #endif // COMM_NET_FACTORY_H

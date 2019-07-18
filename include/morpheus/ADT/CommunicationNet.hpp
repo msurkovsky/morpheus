@@ -86,6 +86,8 @@ struct NetElement : public Identifiable, public Printable {
   NetElement& operator=(const NetElement &) = delete;
   NetElement& operator=(NetElement &&) = default;
 
+  virtual string get_element_type() const = 0;
+
   virtual void print (raw_ostream &os) const {
     if (name.empty()) {
       os << this; // print pointer value
@@ -132,8 +134,10 @@ struct Place final : NetElement {
   Place& operator=(const Place &) = delete;
   Place& operator=(Place &&) = default;
 
-  virtual void print (raw_ostream &os) const {
-    os << "P(" << id << "): ";
+  string get_element_type() const {
+    return "place_t";
+  }
+
   void print (raw_ostream &os) const {
     os << "P(" << get_id() << "): ";
 
@@ -167,8 +171,10 @@ struct Transition final : NetElement {
   Transition& operator=(const Transition &) = delete;
   Transition& operator=(Transition &&) = default;
 
-  virtual void print (raw_ostream &os) const {
-    os << "T(" << id << "): ";
+  string get_element_type() const {
+    return "transition_t";
+  }
+
   void print (raw_ostream &os) const {
     os << "T(" << get_id() << "): ";
 

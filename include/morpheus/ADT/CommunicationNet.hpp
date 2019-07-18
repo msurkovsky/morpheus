@@ -50,17 +50,25 @@ raw_ostream &operator<< (raw_ostream &os, const Printable &printable) {
 struct Identifiable {
   using ID = string;
 
-  const ID id;
+  virtual ~Identifiable() = default;
 
   Identifiable() : id(generate_id()) { }
+  Identifiable(const Identifiable &) = delete;
+  Identifiable(Identifiable &&) = default;
+  Identifiable& operator=(const Identifiable &) = delete;
+  Identifiable& operator=(Identifiable &&) = default;
 
-  virtual ~Identifiable() = default;
+  ID get_id() const {
+    return id;
+  }
 
 private:
   static ID generate_id() {
     static unsigned int id = 0;
     return std::to_string(++id);
   }
+
+  ID id;
 };
 
 
@@ -72,6 +80,8 @@ struct NetElement : public Identifiable, public Printable {
   NetElement(string name) : name(name) { }
   NetElement(const NetElement &) = delete;
   NetElement(NetElement &&) = default;
+  NetElement& operator=(const NetElement &) = delete;
+  NetElement& operator=(NetElement &&) = default;
 
   virtual void print (raw_ostream &os) const {
     if (name.empty()) {
@@ -84,17 +94,19 @@ struct NetElement : public Identifiable, public Printable {
 
 
 struct Edge final : public Printable {
-  const NetElement &startpoint;
-  const NetElement &endpoint;
+  NetElement &startpoint;
+  NetElement &endpoint;
   EdgeType type; // TODO: maybe define separates types for it
   string arc_expr;
 
-  explicit Edge(const NetElement &startpoint, const NetElement &endpoint,
+  explicit Edge(NetElement &startpoint, NetElement &endpoint,
                 EdgeType type, string arc_expr)
     : startpoint(startpoint), endpoint(endpoint),
       type(type), arc_expr(arc_expr) { }
   Edge(const Edge &) = delete;
   Edge(Edge &&) = default;
+  Edge& operator=(const Edge &) = delete;
+  Edge& operator=(Edge &&) = default;
 
   void print (raw_ostream &os) const {
     if (arc_expr.empty()) {
@@ -114,9 +126,13 @@ struct Place final : NetElement {
     : NetElement(name), type(type), init_expr(init_expr) { }
   Place(const Place &) = delete;
   Place(Place &&) = default;
+  Place& operator=(const Place &) = delete;
+  Place& operator=(Place &&) = default;
 
   virtual void print (raw_ostream &os) const {
     os << "P(" << id << "): ";
+  void print (raw_ostream &os) const {
+    os << "P(" << get_id() << "): ";
 
     NetElement::print(os);
 
@@ -139,15 +155,19 @@ using ConditionList = vector<string>;
 
 struct Transition final : NetElement {
   string name;
-  const ConditionList guard;
+  ConditionList guard;
 
   explicit Transition(string name, const ConditionList guard)
     : NetElement(name), guard(guard) { }
   Transition(const Transition &) = delete;
   Transition(Transition &&) = default;
+  Transition& operator=(const Transition &) = delete;
+  Transition& operator=(Transition &&) = default;
 
   virtual void print (raw_ostream &os) const {
     os << "T(" << id << "): ";
+  void print (raw_ostream &os) const {
+    os << "T(" << get_id() << "): ";
 
     NetElement::print(os);
 
@@ -190,6 +210,8 @@ public:
   CommunicationNet() = default;
   CommunicationNet(const CommunicationNet &) = delete;
   CommunicationNet(CommunicationNet &&) = default;
+  CommunicationNet& operator=(const CommunicationNet &) = delete;
+  CommunicationNet& operator=(CommunicationNet &&) = default;
 
   Place& add_place(string type, string init_expr, string name="") {
     return add_(make_element_<Place>(name, type, init_expr), places_);
@@ -241,7 +263,7 @@ public:
   }
 
   virtual void print (raw_ostream &os) const {
-    os << "CommunicationNet(" << id << "):\n";
+    os << "CommunicationNet(" << get_id() << "):\n";
 
     os << "Places:\n";
     print_(places_, os, 2);
@@ -349,10 +371,10 @@ struct AddressableCN final : public CommunicationNet {
   using Address = unsigned int;
 
   const Address address;
-  const Place &asr;
-  const Place &arr;
-  const Place &csr;
-  const Place &crr;
+  Place &asr;
+  Place &arr;
+  Place &csr;
+  Place &crr;
 
   ~AddressableCN() = default;
 
@@ -362,8 +384,8 @@ struct AddressableCN final : public CommunicationNet {
       arr(add_place("MessageRequest", "", "Active Receive Request")),
       csr(add_place("MessageRequest", "", "Completed Send Request")),
       crr(add_place("MessageToken", "", "Completed Receive Request")),
-      entry_p_(&add_place("Unit", "", "Entry" + id)),
-      exit_p_(&add_place("Unit", "", "Exit" + id)) { }
+      entry_p_(&add_place("Unit", "", "Entry" + get_id())),
+      exit_p_(&add_place("Unit", "", "Exit" + get_id())) { }
 
   AddressableCN(const AddressableCN &) = delete;
   AddressableCN(AddressableCN &&) = default;
@@ -425,7 +447,7 @@ public:
     self_.release();
   }
 
-  void add_cf_edge(const NetElement& src, const NetElement& dest) {
+  void add_cf_edge(NetElement& src, NetElement& dest) {
     self_->add_cf_edge_(src, dest);
   }
 
@@ -460,7 +482,7 @@ private:
     virtual void takeover_(CommunicationNet cn) = 0;
     virtual void inject_into_(AddressableCN &) = 0;
     virtual void inject_into_(PluginCNGeneric &) = 0;
-    virtual void add_cf_edge_(const NetElement &src, const NetElement &dest) = 0;
+    virtual void add_cf_edge_(NetElement &src, NetElement &dest) = 0;
     virtual Place& entry_place_() = 0;
     virtual Place& exit_place_() = 0;
     virtual void set_entry_(Place *) = 0;
@@ -484,7 +506,7 @@ private:
       move(pcn_).inject_into(pcn);
     }
 
-    void add_cf_edge_(const NetElement &src, const NetElement &dest) override {
+    void add_cf_edge_(NetElement &src, NetElement &dest) override {
       pcn_.add_cf_edge(src, dest);
     }
 
@@ -523,8 +545,8 @@ public:
   virtual ~PluginCNBase() = default;
 
   PluginCNBase()
-    : entry_p_(&add_place("Unit", "", "entry" + id)),
-      exit_p_(&add_place("Unit", "", "exit" + id)) { }
+    : entry_p_(&add_place("Unit", "", "entry" + get_id())),
+      exit_p_(&add_place("Unit", "", "exit" + get_id())) { }
   PluginCNBase(const PluginCNBase &) = delete;
   PluginCNBase(PluginCNBase &&) = default;
 

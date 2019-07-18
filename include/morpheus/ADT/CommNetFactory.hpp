@@ -57,7 +57,7 @@ struct CN_MPI_Isend : public PluginCNBase {
   virtual ~CN_MPI_Isend() = default;
 
   CN_MPI_Isend(const CallSite &cs)
-    : name_prefix("send" + id),
+    : name_prefix("send" + get_id()),
       send_params(add_place("<empty>", "", name_prefix + "_params")),
       send_reqst(add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
       send_exit(add_place("Unit", "", name_prefix + "_exit")),
@@ -114,7 +114,7 @@ struct CN_MPI_Wait : public PluginCNBase {
   virtual ~CN_MPI_Wait() = default;
 
   CN_MPI_Wait(/*const CallSite &cs*/)
-    : name_prefix("wait" + id),
+    : name_prefix("wait" + get_id()),
       wait(add_transition({}, name_prefix)) { }
   CN_MPI_Wait(const CN_MPI_Wait &) = delete;
   CN_MPI_Wait(CN_MPI_Wait &&) = default;

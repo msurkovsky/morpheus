@@ -96,29 +96,10 @@ namespace cn {
   void CommunicationNet::collapse() {
     CommunicationNet tmp_cn;
 
-    size_t p_idx = 0;
-    while (p_idx < places_.size()) {
-      Place &p = *places_[p_idx];
-      if (p.type == "Unit" && p.leads_to.size() == 1) {
+    collapse(places_, tmp_cn, &CommunicationNet::places_);
+    collapse(transitions_, tmp_cn, &CommunicationNet::transitions_);
 
-        Edge &e = *p.leads_to.back();
-        if (e.endpoint.get_element_type() == "place_t") { // TODO: "place_t" move to the static variable into Place
-          Place &endpoint = static_cast<Place&>(e.endpoint);
-          if (endpoint.type == "Unit") {
-            p_idx++; // skip the place and continue with another one
-            continue;
-          }
-        }
-      }
-
-      // overtake place
-      tmp_cn.add_place(move(places_[p_idx]));
-      p_idx++;
-    } // end of collapsing `P<Unit> --( cf_edge )--> P<Unit>` pattern
-
-    // takes over all transitions
-    tmp_cn.takeover_(tmp_cn.transitions_, transitions());
-
+    // TODO: remove freely hanging elements
     std::swap(tmp_cn, *this);
   }
 

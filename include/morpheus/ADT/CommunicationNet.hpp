@@ -93,6 +93,7 @@ struct NetElement : public Identifiable, public Printable {
 
   string name;
   vector<unique_ptr<Edge>> leads_to;
+  vector<Edge*> referenced_by;
 };
 
 
@@ -184,6 +185,65 @@ class CommunicationNet : public Identifiable,
     }
   };
 
+protected:
+  bool is_collapsible(const Edge &e) const {
+    EdgePredicate<CONTROL_FLOW> is_cf;
+
+    if (e.startpoint.get_element_type() == e.endpoint.get_element_type() && is_cf(e)) {
+      if (e.startpoint.get_element_type() == "place_t") {
+        Place &p1 = static_cast<Place&>(e.startpoint);
+        Place &p2 = static_cast<Place&>(e.endpoint);
+        if (p1.type == p2.type) {
+          return true;
+        }
+      } else {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void reconnect(Edge &e) {
+    NetElement &startpoint = e.startpoint;
+    for (Edge *ref_e : startpoint.referenced_by) {
+      Elements<Edge> &location = ref_e->startpoint.leads_to; // location of owners
+      auto owner = std::find_if(
+        location.begin(), location.end(),
+        [ref_e](const Element<Edge> &o) { return o.get() == ref_e; });
+
+      assert (owner != location.end() && "The owner has to exist!");
+
+      Element<Edge> &edge = *owner;
+      Element<Edge> new_edge = make_element_<Edge>(edge->startpoint,
+                                                   e.endpoint,
+                                                   edge->arc_expr,
+                                                   edge->get_category(),
+                                                   edge->get_type());
+      std::swap(edge, new_edge);
+    }
+  }
+
+  template <typename T>
+  void collapse(Elements<T> &elements,
+                CommunicationNet &tmp_cn,
+                Elements<T> CommunicationNet::*storage) {
+    size_t idx = 0;
+    while (idx < elements.size()) {
+      Element<T> &elem = elements[idx];
+      if (elem->leads_to.size() == 1) {
+        Element<Edge> &e = elem->leads_to.back();
+        if (is_collapsible(*e)) {
+          reconnect(*e);
+          idx++;
+          continue;
+        }
+      }
+      // overtake element
+      tmp_cn.add_(move(elem), tmp_cn.*storage);
+      idx++;
+    }
+  }
+
 public:
   virtual ~CommunicationNet() = default;
 
@@ -265,7 +325,11 @@ private:
   template <typename Startpoint, typename Endpoint>
   inline Edge& add_edge_(Startpoint &start, Endpoint &end, string ae,
                   EdgeCategory category, EdgeType type) {
-    return add_(make_element_<Edge>(start, end, ae, category, type), start.leads_to);
+    Element<Edge> edge = make_element_<Edge>(start, end, ae, category, type);
+    // the end element keeps the pointer to edge which is pointing to it
+    end.referenced_by.push_back(edge.get());
+    // the starting element owns the edge
+    return add_(move(edge), start.leads_to);
   }
 
   template <typename T>

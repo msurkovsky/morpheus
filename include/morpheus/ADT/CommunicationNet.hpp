@@ -177,6 +177,11 @@ class CommunicationNet : public Identifiable,
   template <typename T>
   using Elements = vector<Element<T>>;
 
+  template <typename T, typename... Args>
+  Element<T> make_element_(Args&&... args) {
+    return std::make_unique<T>(forward<Args>(args)...);
+  }
+
   // EdgePredicate is used to filter a category of edges
   template <EdgeCategory C>
   struct EdgePredicate {
@@ -311,11 +316,6 @@ public:
   }
 
 private:
-  template <typename T, typename... Args>
-  Element<T> make_element_(Args&&... args) {
-    return std::make_unique<T>(forward<Args>(args)...);
-  }
-
   template <typename T>
   inline T& add_(Element<T> &&e, Elements<T> &elements) {
     elements.push_back(forward<Element<T>>(e));
@@ -406,8 +406,8 @@ struct AddressableCN final : public CommunicationNet {
   Place& entry_place() { return *entry_p_; }
   Place& exit_place() { return *exit_p_; }
 
-  void set_entry(Place *p) { entry_p_ = p; }
-  void set_exit(Place *p) { exit_p_ = p; }
+  void set_entry(Place &p) { entry_p_ = &p; }
+  void set_exit(Place &p) { exit_p_ = &p; }
 
 private:
   Place *entry_p_;
@@ -448,8 +448,8 @@ public:
   Place& entry_place() { return self_->entry_place_(); }
   Place& exit_place() { return self_->exit_place_(); }
 
-  void set_entry(Place *p) { self_->set_entry_(p); }
-  void set_exit(Place *p) { self_->set_exit_(p); }
+  void set_entry(Place &p) { self_->set_entry_(p); }
+  void set_exit(Place &p) { self_->set_exit_(p); }
 
   void print(raw_ostream &os) const { self_->print_(os); }
 
@@ -466,8 +466,8 @@ private:
     virtual void add_cf_edge_(NetElement &src, NetElement &dest) = 0;
     virtual Place& entry_place_() = 0;
     virtual Place& exit_place_() = 0;
-    virtual void set_entry_(Place *) = 0;
-    virtual void set_exit_(Place *) = 0;
+    virtual void set_entry_(Place &) = 0;
+    virtual void set_exit_(Place &) = 0;
     virtual void print_(raw_ostream &) const = 0;
   };
 
@@ -499,11 +499,11 @@ private:
       return pcn_.exit_place();
     }
 
-    void set_entry_(Place *p) override {
+    void set_entry_(Place &p) override {
       pcn_.set_entry(p);
     }
 
-    void set_exit_(Place *p) override {
+    void set_exit_(Place &p) override {
       pcn_.set_exit(p);
     }
 
@@ -550,8 +550,8 @@ public:
   Place& entry_place() { return *entry_p_; }
   Place& exit_place() { return *exit_p_; }
 
-  void set_entry(Place *p) { entry_p_ = p; }
-  void set_exit(Place *p) { exit_p_ = p; }
+  void set_entry(Place &p) { entry_p_ = &p; }
+  void set_exit(Place &p) { exit_p_ = &p; }
 
 private:
   template <typename PluggableCN>
@@ -560,7 +560,7 @@ private:
     pcn.add_cf_edge(pcn.entry_place(), entry_place());
 
     // set the new entry as the exit of injected net
-    pcn.set_entry(&exit_place());
+    pcn.set_entry(exit_place());
 
     // pass over the elements into `pcn`
     pcn.takeover(move(*this));

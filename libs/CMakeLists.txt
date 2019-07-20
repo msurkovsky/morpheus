@@ -1,6 +1,6 @@
+add_subdirectory (ADT)
 add_subdirectory (Analysis)
 add_subdirectory (Transforms)
-add_subdirectory (ADT)
 
 add_library(Morph MODULE
   morph.cpp

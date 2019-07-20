@@ -13,6 +13,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "morpheus/Utils.hpp"
+#include "morpheus/Formats/Formatter.hpp"
 
 #include <memory>
 #include <string>
@@ -41,16 +42,16 @@ enum EdgeCategory {
   CONTROL_FLOW,
 };
 
+template <typename T>
 struct Printable {
   virtual ~Printable() = default;
 
-  virtual void print (raw_ostream &os) const = 0;
-};
+  // virtual void print (ostream &, const formats::Formatter &) const = 0;
+  virtual void print(ostream &os, const formats::Formatter &fmt) const {
+    fmt.format(os, static_cast<const T &>(*this));
+  }
 
-raw_ostream &operator<< (raw_ostream &os, const Printable &printable) {
-  printable.print(os);
-  return os;
-}
+};
 
 
 struct Identifiable {
@@ -77,7 +78,7 @@ private:
 
 struct Edge;
 
-struct NetElement : public Identifiable, public Printable {
+struct NetElement : public Identifiable, public Printable<NetElement> {
 
   virtual ~NetElement() = default;
 
@@ -89,15 +90,13 @@ struct NetElement : public Identifiable, public Printable {
 
   virtual string get_element_type() const = 0;
 
-  virtual void print (raw_ostream &os) const;
-
   string name;
   vector<unique_ptr<Edge>> leads_to;
   vector<Edge*> referenced_by;
 };
 
 
-struct Edge final : public Printable {
+struct Edge final : public Printable<Edge> {
 
   explicit Edge(NetElement &startpoint, NetElement &endpoint, string arc_expr,
                 EdgeCategory category, EdgeType type)
@@ -110,8 +109,6 @@ struct Edge final : public Printable {
 
   inline EdgeCategory get_category() const { return category; }
   inline EdgeType     get_type()     const { return type; }
-
-  void print (raw_ostream &os) const;
 
   NetElement &startpoint;
   NetElement &endpoint;
@@ -136,8 +133,6 @@ struct Place final : NetElement {
     return "place_t";
   }
 
-  void print (raw_ostream &os) const;
-
   string type;
   string init_expr;
 };
@@ -158,8 +153,6 @@ struct Transition final : NetElement {
     return "transition_t";
   }
 
-  void print (raw_ostream &os) const;
-
   string name;
   ConditionList guard;
 };
@@ -169,7 +162,7 @@ struct Transition final : NetElement {
 // CommunicationNet
 
 class CommunicationNet : public Identifiable,
-                         public Printable {
+                         public Printable<CommunicationNet> {
 
   template <typename T>
   using Element = unique_ptr<T>;
@@ -182,10 +175,11 @@ class CommunicationNet : public Identifiable,
     return std::make_unique<T>(forward<Args>(args)...);
   }
 
+public:
   // EdgePredicate is used to filter a category of edges
   template <EdgeCategory C>
   struct EdgePredicate {
-    bool operator()(const Edge &e) {
+    bool operator()(const Edge &e) const {
       return e.get_category() == C;
     }
   };
@@ -258,7 +252,6 @@ public:
   CommunicationNet& operator=(const CommunicationNet &) = delete;
   CommunicationNet& operator=(CommunicationNet &&) = default;
 
-  virtual void print (raw_ostream &os) const;
   virtual void collapse();
 
   Place& add_place(string type, string init_expr, string name="") {
@@ -337,30 +330,6 @@ private:
     move(src.begin(), src.end(), back_inserter(target));
   }
 
-  // ---------------------------------------------------------------------------
-  // print elements
-
-  template <typename T>
-  void print_(const Element<T> &elem, raw_ostream &os, size_t pos=0) const {
-    os << std::string(pos, ' ') << *elem;
-  }
-
-  template <typename T>
-  void print_(const Elements<T> &elements, raw_ostream &os, size_t pos=0) const {
-    for (const auto &e : elements) {
-      os << std::string(pos, ' ') << *e << "\n";
-    }
-  }
-
-  template <typename T, typename UnaryPredicate>
-  void print_(const Elements<T> &elements, raw_ostream &os, size_t pos, UnaryPredicate pred) const {
-    for (const auto &e : elements) {
-      if (pred(*e)) {
-        os << std::string(pos, ' ') << *e << "\n";
-      }
-    }
-  }
-
   Elements<Place> places_;
   Elements<Transition> transitions_;
 };
@@ -392,10 +361,10 @@ struct AddressableCN final : public CommunicationNet {
   AddressableCN(const AddressableCN &) = delete;
   AddressableCN(AddressableCN &&) = default;
 
-  void print (raw_ostream &os) const {
-    os << "Adress: " << address << "\n";
+  void print (ostream &os, const formats::Formatter &fmt) const {
+    os << "Address: " << address << "\n";
     os << "------------------------------------------------------------\n";
-    CommunicationNet::print(os);
+    CommunicationNet::print(os, fmt);
     os << "------------------------------------------------------------\n\n";
   }
 
@@ -418,7 +387,7 @@ private:
 // =============================================================================
 // Generic Plugin CN
 
-class PluginCNGeneric final : public Printable {
+class PluginCNGeneric {
 
 public:
   ~PluginCNGeneric() = default;
@@ -451,7 +420,9 @@ public:
   void set_entry(Place &p) { self_->set_entry_(p); }
   void set_exit(Place &p) { self_->set_exit_(p); }
 
-  void print(raw_ostream &os) const { self_->print_(os); }
+  void print(ostream &os, const formats::Formatter &fmt) const {
+    self_->print_(os, fmt);
+  }
 
   // ---------------------------------------------------------------------------
   // interface and model implementation of pluggable types
@@ -468,7 +439,7 @@ private:
     virtual Place& exit_place_() = 0;
     virtual void set_entry_(Place &) = 0;
     virtual void set_exit_(Place &) = 0;
-    virtual void print_(raw_ostream &) const = 0;
+    virtual void print_(ostream &os, const formats::Formatter &fmt) const = 0;
   };
 
   template <typename PluggableCN>
@@ -507,8 +478,8 @@ private:
       pcn_.set_exit(p);
     }
 
-    void print_(raw_ostream &os) const override {
-      pcn_.print(os);
+    void print_(ostream &os, const formats::Formatter &fmt) const override {
+      pcn_.print(os, fmt);
     }
 
     PluggableCN pcn_;

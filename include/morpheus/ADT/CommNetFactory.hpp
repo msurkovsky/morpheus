@@ -76,6 +76,9 @@ struct CN_MPI_Isend : public PluginCNBase {
                    "(" + compute_data_buffer_value(*datatype, *size) + ","
                        + compute_envelope_value(nullptr, dest, *tag, false) + ")");
 
+    add_output_edge(send, send_reqst,
+                    "{" + compute_msg_rqst_value(nullptr, dest, *tag, "buffered") + "}");
+
     add_cf_edge(entry_place(), send_params);
     add_cf_edge(send_exit, exit_place());
 
@@ -125,6 +128,34 @@ struct CN_MPI_Wait : public PluginCNBase {
 };
 
 
+// ------------------------------------------------------------------------------
+// CN_MPI_Isend
+struct CN_MPI_Send final : public PluginCNBase {
+
+  virtual ~CN_MPI_Send() = default;
+
+  CN_MPI_Send(const CallSite &cs) : cn_isend(cs), cn_wait(/* TODO: */), t_wait(cn_wait.wait) {
+    add_input_edge(cn_isend.send_reqst, t_wait, "(reqst, {id=id})");
+
+    takeover(std::move(cn_isend));
+    takeover(std::move(cn_wait));
+  }
+  CN_MPI_Send(const CN_MPI_Send &) = delete;
+  CN_MPI_Send(CN_MPI_Send &&) = default;
+
+
+  void connect(const AddressableCN &acn) {
+    cn_isend.connect(acn);
+    add_input_edge(acn.csr, t_wait, "[buffered] {data=data, envelope={id=id}}", SHUFFLE);
+  }
+
+private:
+  CN_MPI_Isend cn_isend;
+  CN_MPI_Wait cn_wait;
+
+  Transition &t_wait;
+};
+
 // ===========================================================================
 // CNs factory
 
@@ -133,8 +164,10 @@ PluginCNGeneric createCommSubnet(const CallSite &cs) {
   assert (f->hasName() && "The CNFactory expects call site with a named function");
 
   StringRef call_name = f->getName();
-  if (call_name == "MPI_Isend" || call_name == "MPI_Send" /* TODO: remove MPI_Send */) {
+  if (call_name == "MPI_Isend") {
     return CN_MPI_Isend(cs);
+  } else if (call_name == "MPI_Send") {
+    return CN_MPI_Send(cs);
   }
   return EmptyCN();
 }

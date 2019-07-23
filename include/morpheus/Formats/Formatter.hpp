@@ -15,8 +15,14 @@ namespace cn {
   struct Place;
   struct Transition;
   class  CommunicationNet;
+  struct AddressableCN;
 
   namespace formats {
+
+    enum struct CN_Type {
+      TOP_LEVEL,
+      SUBGRAPH,
+    };
 
     struct Formatter {
       virtual std::ostream& format(std::ostream &os, const NetElement &) const = 0;
@@ -24,6 +30,7 @@ namespace cn {
       virtual std::ostream& format(std::ostream &os, const Place &) const = 0;
       virtual std::ostream& format(std::ostream &os, const Transition &) const = 0;
       virtual std::ostream& format(std::ostream &os, const CommunicationNet &) const = 0;
+      virtual std::ostream& format(std::ostream &os, const AddressableCN &) const = 0;
     };
 
 
@@ -41,7 +48,7 @@ namespace cn {
     }
 
     template <typename T, typename UnaryPredicate>
-    auto create_print_fn_(std::ostream &os, const formats::Formatter &fmt,
+    auto create_print_fn_(std::ostream &os, const Formatter &fmt,
                           UnaryPredicate pred, std::string delim, size_t pos) {
       return [&, pred, pos] (const std::unique_ptr<T> &e) {
         if (pred(*e)) {

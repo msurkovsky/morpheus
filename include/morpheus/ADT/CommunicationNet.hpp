@@ -46,11 +46,9 @@ template <typename T>
 struct Printable {
   virtual ~Printable() = default;
 
-  // virtual void print (ostream &, const formats::Formatter &) const = 0;
   virtual void print(ostream &os, const formats::Formatter &fmt) const {
     fmt.format(os, static_cast<const T &>(*this));
   }
-
 };
 
 
@@ -351,21 +349,19 @@ struct AddressableCN final : public CommunicationNet {
 
   AddressableCN(Address address)
     : address(address),
-      asr(add_place("MessageToken", "", "Active Send Request")),
-      arr(add_place("MessageRequest", "", "Active Receive Request")),
-      csr(add_place("MessageRequest", "", "Completed Send Request")),
-      crr(add_place("MessageToken", "", "Completed Receive Request")),
+      asr(add_place("MessageToken", "", "ActiveSendRequest")),
+      arr(add_place("MessageRequest", "", "ActiveReceiveRequest")),
+      csr(add_place("MessageRequest", "", "CompletedSendRequest")),
+      crr(add_place("MessageToken", "", "CompletedReceiveRequest")),
       entry_p_(&add_place("Unit", "", "Entry" + get_id())),
       exit_p_(&add_place("Unit", "", "Exit" + get_id())) { }
 
   AddressableCN(const AddressableCN &) = delete;
   AddressableCN(AddressableCN &&) = default;
 
-  void print (ostream &os, const formats::Formatter &fmt) const {
-    os << "Address: " << address << "\n";
-    os << "------------------------------------------------------------\n";
-    CommunicationNet::print(os, fmt);
-    os << "------------------------------------------------------------\n\n";
+  // NOTE: the print is redefined to force the formatter to use the right method
+  void print(ostream &os, const formats::Formatter &fmt) const {
+    fmt.format(os, *this);
   }
 
   // ---------------------------------------------------------------------------

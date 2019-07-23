@@ -6,7 +6,7 @@
 #include "morpheus/ADT/CommNetFactory.hpp"
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
 #include "morpheus/Analysis/MPIScopeAnalysis.hpp"
-#include "morpheus/Formats/PlainText.hpp"
+#include "morpheus/Formats/DotGraph.hpp"
 #include "morpheus/Transforms/GenerateMPNet.hpp"
 
 using namespace llvm;
@@ -45,9 +45,16 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
     }
   }
 
-  errs() << acn;
+  std::ofstream dot;
+  dot.open("acn-" + acn.get_id() + ".dot");
+  dot << acn;
+  dot.close();
+
   acn.collapse();
-  errs() << acn;
+  std::ofstream dot2;
+  dot2.open("acn-" + acn.get_id() + "-collapsed.dot");
+  dot2 << acn;
+  dot2.close();
 
   return PreservedAnalyses::none(); // TODO: check which analyses have been broken?
 }

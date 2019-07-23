@@ -11,36 +11,6 @@ using namespace std;
 namespace cn {
   namespace formats {
 
-    namespace { // local utilities
-      template <typename T>
-      auto get_print_element_f_(ostream &os, const Formatter &fmt, string delim="", size_t pos=0) {
-        return [&, pos] (const std::unique_ptr<T> &e) {
-          os << std::string(pos, ' ');
-          fmt.format(os, *e);
-          os << delim;
-        };
-      }
-
-      template <typename T, typename UnaryPredicate>
-      auto get_print_element_f_(ostream &os, const formats::Formatter &fmt,
-                                UnaryPredicate pred, string delim="", size_t pos=0) {
-        return [&, pred, pos] (const unique_ptr<T> &e) {
-          if (pred(*e)) {
-            os << std::string(pos, ' ');
-            fmt.format(os, *e);
-            os << delim;
-          }
-        };
-      }
-
-      template <EdgeCategory C>
-      using EdgePredicate = CommunicationNet::EdgePredicate<C>;
-    } // end of local utilities
-
-
-    // =========================================================================
-    // PlainText Formatter
-
     class PlainText final : public Formatter {
 
     public:
@@ -93,7 +63,6 @@ namespace cn {
         return os;
       }
 
-
       ostream& format(ostream &os, const CommunicationNet &cn) const {
         os << "CommunicationNet(" << cn.get_id() << "):\n";
 
@@ -101,13 +70,13 @@ namespace cn {
         auto places = cn.places();
         std::for_each(places.begin(),
                       places.end(),
-                      get_print_element_f_<Place>(os, *this, "\n", 2));
+                      create_print_fn_<Place>(os, *this, "\n", 2));
 
         os << "Transitions:\n";
         auto transitions = cn.transitions();
         std::for_each(transitions.begin(),
                       transitions.end(),
-                      get_print_element_f_<Transition>(os, *this, "\n", 2));
+                      create_print_fn_<Transition>(os, *this, "\n", 2));
 
 
         os << "Input edges:\n";
@@ -115,26 +84,30 @@ namespace cn {
           std::for_each(
             p->leads_to.begin(),
             p->leads_to.end(),
-            get_print_element_f_<Edge>(os, *this, EdgePredicate<REGULAR>(), "\n", 2));
+            create_print_fn_<Edge>(
+              os, *this, CommunicationNet::EdgePredicate<REGULAR>(), "\n", 2));
         }
 
         os << "Outuput edges:\n";
         for (const auto &t : cn.transitions()) {
           std::for_each(t->leads_to.begin(),
                         t->leads_to.end(),
-                        get_print_element_f_<Edge>(os, *this, EdgePredicate<REGULAR>(), "\n", 2));
+                        create_print_fn_<Edge>(
+                          os, *this, CommunicationNet::EdgePredicate<REGULAR>(), "\n", 2));
         }
 
         os << "CF edges: \n";
         for (const auto &p : cn.places()) {
           std::for_each(p->leads_to.begin(),
                         p->leads_to.end(),
-                        get_print_element_f_<Edge>(os, *this, EdgePredicate<CONTROL_FLOW>(), "\n", 2));
+                        create_print_fn_<Edge>(
+                          os, *this, CommunicationNet::EdgePredicate<CONTROL_FLOW>(), "\n", 2));
         }
         for (const auto &t : cn.transitions()) {
           std::for_each(t->leads_to.begin(),
                         t->leads_to.end(),
-                        get_print_element_f_<Edge>(os, *this, EdgePredicate<CONTROL_FLOW>(), "\n", 2));
+                        create_print_fn_<Edge>(
+                          os, *this, CommunicationNet::EdgePredicate<CONTROL_FLOW>(), "\n", 2));
         }
         return os;
       }

@@ -14,7 +14,7 @@ namespace cn {
   struct Edge;
   struct Place;
   struct Transition;
-  class CommunicationNet;
+  class  CommunicationNet;
 
   namespace formats {
 
@@ -25,6 +25,32 @@ namespace cn {
       virtual std::ostream& format(std::ostream &os, const Transition &) const = 0;
       virtual std::ostream& format(std::ostream &os, const CommunicationNet &) const = 0;
     };
+
+
+    // -------------------------------------------------------------------------
+    // utilities
+
+    template <typename T>
+    auto create_print_fn_(std::ostream &os, const Formatter &fmt,
+                          std::string delim, size_t pos) {
+      return [&, pos] (const std::unique_ptr<T> &e) {
+        os << std::string(pos, ' ');
+        fmt.format(os, *e);
+        os << delim;
+      };
+    }
+
+    template <typename T, typename UnaryPredicate>
+    auto create_print_fn_(std::ostream &os, const formats::Formatter &fmt,
+                          UnaryPredicate pred, std::string delim, size_t pos) {
+      return [&, pred, pos] (const std::unique_ptr<T> &e) {
+        if (pred(*e)) {
+          os << std::string(pos, ' ');
+          fmt.format(os, *e);
+          os << delim;
+        }
+      };
+    }
 
   } // end of formats
 } // end of cn

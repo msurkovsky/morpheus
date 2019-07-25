@@ -23,8 +23,12 @@ namespace cn {
     collapse(places_, tmp_cn, &CommunicationNet::places_);
     collapse(transitions_, tmp_cn, &CommunicationNet::transitions_);
 
-    // TODO: remove freely hanging elements (22.7. (?) - it is not so clear if those should be removed.)
     std::swap(tmp_cn, *this);
+  }
+
+  void CommunicationNet::takeover(CommunicationNet cn) {
+    takeover_(places_, cn.places());
+    takeover_(transitions_, cn.transitions());
   }
 
 } // end of communication net (cn) namespace

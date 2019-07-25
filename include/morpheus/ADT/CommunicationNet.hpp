@@ -251,6 +251,7 @@ public:
   CommunicationNet& operator=(CommunicationNet &&) = default;
 
   virtual void collapse();
+  virtual void takeover(CommunicationNet cn);
 
   Place& add_place(string type, string init_expr, string name="") {
     return add_(make_element_<Place>(name, type, init_expr), places_);
@@ -280,11 +281,6 @@ public:
   template<typename Startpoint, typename Endpoint>
   Edge& add_cf_edge(Startpoint& src, Endpoint& dest) {
     return add_edge_(src, dest, "", CONTROL_FLOW, SINGLE_HEADED);
-  }
-
-  void takeover(CommunicationNet cn) {
-    takeover_(places_, cn.places());
-    takeover_(transitions_, cn.transitions());
   }
 
   // -------------------------------------------------------
@@ -344,6 +340,8 @@ struct AddressableCN final : public CommunicationNet {
   Place &arr;
   Place &csr;
   Place &crr;
+  // inner communication net used to keep away ACN elements from those of plugged nets
+  CommunicationNet embedded_cn;
 
   ~AddressableCN() = default;
 
@@ -353,6 +351,7 @@ struct AddressableCN final : public CommunicationNet {
       arr(add_place("MessageRequest", "", "ActiveReceiveRequest")),
       csr(add_place("MessageRequest", "", "CompletedSendRequest")),
       crr(add_place("MessageToken", "", "CompletedReceiveRequest")),
+      embedded_cn(CommunicationNet()),
       entry_p_(&add_place("Unit", "", "Entry" + get_id())),
       exit_p_(&add_place("Unit", "", "Exit" + get_id())) { }
 
@@ -362,6 +361,14 @@ struct AddressableCN final : public CommunicationNet {
   // NOTE: the print is redefined to force the formatter to use the right method
   void print(ostream &os, const formats::Formatter &fmt) const {
     fmt.format(os, *this);
+  }
+
+  void collapse () {
+    embedded_cn.collapse();
+  }
+
+  void takeover (CommunicationNet cn) {
+    embedded_cn.takeover(move(cn));
   }
 
   // ---------------------------------------------------------------------------

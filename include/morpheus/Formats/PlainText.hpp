@@ -78,9 +78,30 @@ namespace cn {
                       transitions.end(),
                       create_print_fn_<Transition>(os, *this, "\n", 2));
 
+        return os;
+      }
+
+      ostream& format(ostream &os, const AddressableCN &acn) const {
+        os << "Address: " << acn.address << "\n";
+        os << "----------------------------------------\n";
+        os << "Interface places:";
+        auto places = acn.places();
+        std::for_each(places.begin(),
+                      places.end(),
+                      create_print_fn_<Place>(os, *this, "\n", 2));
+
+        // print the embedded communication net
+        format(os, acn.embedded_cn);
 
         os << "Input edges:\n";
-        for (const auto &p : cn.places()) {
+        for (const auto &p : acn.embedded_cn.places()) {
+          std::for_each(
+            p->leads_to.begin(),
+            p->leads_to.end(),
+            create_print_fn_<Edge>(
+              os, *this, CommunicationNet::EdgePredicate<REGULAR>(), "\n", 2));
+        }
+        for (const auto &p : acn.places()) {
           std::for_each(
             p->leads_to.begin(),
             p->leads_to.end(),
@@ -89,7 +110,7 @@ namespace cn {
         }
 
         os << "Outuput edges:\n";
-        for (const auto &t : cn.transitions()) {
+        for (const auto &t : acn.embedded_cn.transitions()) {
           std::for_each(t->leads_to.begin(),
                         t->leads_to.end(),
                         create_print_fn_<Edge>(
@@ -97,18 +118,26 @@ namespace cn {
         }
 
         os << "CF edges: \n";
-        for (const auto &p : cn.places()) {
+        for (const auto &p : acn.places()) {
+          std::for_each(
+            p->leads_to.begin(),
+            p->leads_to.end(),
+            create_print_fn_<Edge>(
+              os, *this, CommunicationNet::EdgePredicate<CONTROL_FLOW>(), "\n", 2));
+        }
+        for (const auto &p : acn.embedded_cn.places()) {
           std::for_each(p->leads_to.begin(),
                         p->leads_to.end(),
                         create_print_fn_<Edge>(
                           os, *this, CommunicationNet::EdgePredicate<CONTROL_FLOW>(), "\n", 2));
         }
-        for (const auto &t : cn.transitions()) {
+        for (const auto &t : acn.embedded_cn.transitions()) {
           std::for_each(t->leads_to.begin(),
                         t->leads_to.end(),
                         create_print_fn_<Edge>(
                           os, *this, CommunicationNet::EdgePredicate<CONTROL_FLOW>(), "\n", 2));
         }
+        os << "----------------------------------------\n";
         return os;
       }
     };

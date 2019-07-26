@@ -25,16 +25,18 @@ namespace cn {
       }
 
       ostream& format(ostream &os, const Edge &edge) const {
-        // } else {
-        //   os << " --/ " << edge.arc_expr << " /--> ";
-        // }
-        os << edge.startpoint.get_id() << ":box" << "->" << edge.endpoint.get_id() << ":box";
+        os << edge.startpoint.get_id() << ":box:c"
+           << " -> "
+           << edge.endpoint.get_id() << ":box:c"
+           << " [label=\"" << edge.arc_expr << "\"];";
         return os;
       }
 
       ostream& format(ostream &os, const Place &place) const {
+        string id = place.get_id();
+
         os << place.get_id()
-           << "[shape=plain label=<"
+           << " [shape=plain label=<"
            << "<table border=\"0\">"
             << "<tr>"
              << "<td></td>"
@@ -53,21 +55,23 @@ namespace cn {
              << "<td></td>"
             << "</tr>"
            << "</table>"
-           << ">]";
+           << ">];";
 
         return os;
       }
 
       ostream& format(ostream &os, const Transition &transition) const {
         os << transition.get_id()
-           << "[shape=plain label=<"
-            << "<table border=\"0\">"
-             << "<tr><td border=\"1\" cellpadding=\"10\" port=\"box\">"; format(os, static_cast<const NetElement &>(transition)); os << "</td></tr>";
-        if (!transition.guard.empty()) {
-          os << "<tr><td>" << pp_vector(transition.guard, ", ", "[", "]") << "</td></tr>";
-        }
-        os  << "</table>"
-           << ">]";
+           << " [shape=plain label=<"
+           << "<table border=\"0\">"
+            << "<tr>"
+             << "<td border=\"1\" cellpadding=\"10\" port=\"box\">"; format(os, static_cast<const NetElement &>(transition)); os << "</td>"
+            << "</tr>"
+            << "<tr>"
+             << "<td>" << pp_vector(transition.guard, ", ", "[", "]") << "</td>"
+            << "</tr>"
+           << "</table>"
+           << ">];";
         return os;
       }
 
@@ -118,7 +122,7 @@ namespace cn {
                         create_print_fn_<Edge>(os, *this, "\n", 0));
         }
 
-        os << "}\n";
+        os << "}";
         return os;
       }
     };

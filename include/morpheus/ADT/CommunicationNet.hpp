@@ -90,6 +90,8 @@ struct NetElement : public Identifiable, public Printable<NetElement> {
 
   string name;
   vector<unique_ptr<Edge>> leads_to;
+
+  // NOTE: non-owning pointers to edges that points to the element
   vector<Edge*> referenced_by;
 };
 
@@ -183,6 +185,21 @@ public:
   };
 
 protected:
+
+  void remove_refs(const NetElement &elem) {
+    for (const std::unique_ptr<Edge> &edge : elem.leads_to) {
+      NetElement &pointed_elem = edge->endpoint;
+      auto new_end = std::remove(pointed_elem.referenced_by.begin(),
+                                 pointed_elem.referenced_by.end(),
+                                 edge.get());
+
+      auto old_end = pointed_elem.referenced_by.end();
+      if (new_end != old_end) { // remove erase unspecified elements
+        pointed_elem.referenced_by.erase(new_end, old_end);
+      }
+    }
+  }
+
   bool is_collapsible(const Edge &e) const {
     EdgePredicate<CONTROL_FLOW> is_cf;
 
@@ -227,10 +244,14 @@ protected:
     size_t idx = 0;
     while (idx < elements.size()) {
       Element<T> &elem = elements[idx];
-      if (elem->leads_to.size() == 1) {
+      if (elem->leads_to.size() == 1) { // only one-path nodes can be collapsed
         Element<Edge> &e = elem->leads_to.back();
         if (is_collapsible(*e)) {
+          remove_refs(*elem); // remove the references stored within `referenced_by`
+                              // info at net elements
           reconnect(*e);
+
+          // skip the element, hence remove it
           idx++;
           continue;
         }

@@ -200,30 +200,32 @@ protected:
     }
   }
 
-  void remove_edge(const Edge &edge) {
-    NetElement &startpoint = edge.startpoint;
-    NetElement &endpoint = edge.endpoint;
+  void remove_edge(Element<Edge> edge) {
+    NetElement &startpoint = edge->startpoint;
+    NetElement &endpoint = edge->endpoint;
+
+    { // remove the edge
+
+      // As the edge has to be moved to be able to be passed into this function,
+      // there is "invalid" pointer to it which has to be removed.
+      auto it = std::find_if(startpoint.leads_to.begin(),
+                             startpoint.leads_to.end(),
+                             [] (Element<Edge> &e) { return !e; });
+
+      assert (it != startpoint.leads_to.end()
+              && "Existing edge leaves invalid storage place in its starting point.");
+      startpoint.leads_to.erase(it);
+    }
 
     { // remove stored pointer to referenced edge
       auto it = std::find_if(endpoint.referenced_by.begin(),
                              endpoint.referenced_by.end(),
-                             [&edge] (const Edge *e) { return e == &edge; });
+                             [&edge] (const Edge *e) { return e == edge.get(); });
 
-      if (it != endpoint.referenced_by.end()) {
-        endpoint.referenced_by.erase(it);
-      }
+      assert (it != endpoint.referenced_by.end()
+              && "Existing edge is supposed to be referenced by endpoint.");
+      endpoint.referenced_by.erase(it);
     }
-
-    { // remove the edge
-      auto it = std::find_if(startpoint.leads_to.begin(),
-                             startpoint.leads_to.end(),
-                             [&edge] (const Element<Edge> &e) { return e.get() == &edge; });
-
-      if (it != startpoint.leads_to.end()) {
-        startpoint.leads_to.erase(it);
-      }
-    }
-
   }
 
   bool is_collapsible(const Edge &e) const {

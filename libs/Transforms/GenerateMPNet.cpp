@@ -28,6 +28,7 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
   // TODO: take rank/address value from the input code
   cn::AddressableCN acn(1);
 
+  // plug-in nets for all MPI calls
   auto bfs_it = breadth_first(scope_fn);
   for (const BasicBlock *bb : bfs_it) {
     MPILabelling::MPICheckpoints checkpoints = mpi_labelling.get_mpi_checkpoints(bb);
@@ -44,6 +45,8 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
       }
     }
   }
+  // NOTE: connect entry and exit place.
+  acn.add_cf_edge(acn.entry_place(), acn.exit_place());
 
   std::ofstream dot;
   dot.open("acn-" + acn.get_id() + ".dot");

@@ -200,6 +200,32 @@ protected:
     }
   }
 
+  void remove_edge(const Edge &edge) {
+    NetElement &startpoint = edge.startpoint;
+    NetElement &endpoint = edge.endpoint;
+
+    { // remove stored pointer to referenced edge
+      auto it = std::find_if(endpoint.referenced_by.begin(),
+                             endpoint.referenced_by.end(),
+                             [&edge] (const Edge *e) { return e == &edge; });
+
+      if (it != endpoint.referenced_by.end()) {
+        endpoint.referenced_by.erase(it);
+      }
+    }
+
+    { // remove the edge
+      auto it = std::find_if(startpoint.leads_to.begin(),
+                             startpoint.leads_to.end(),
+                             [&edge] (const Element<Edge> &e) { return e.get() == &edge; });
+
+      if (it != startpoint.leads_to.end()) {
+        startpoint.leads_to.erase(it);
+      }
+    }
+
+  }
+
   bool is_collapsible(const Edge &e) const {
     EdgePredicate<CONTROL_FLOW> is_cf;
 

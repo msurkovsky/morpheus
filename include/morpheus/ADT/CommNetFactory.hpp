@@ -21,7 +21,9 @@ struct EmptyCN final : public PluginCNBase {
 public:
   ~EmptyCN() = default;
 
-  EmptyCN() {
+  EmptyCN(const CallSite &cs) : call_name(cs.getCalledFunction()->getName()) {
+    entry_place().name += call_name;
+    exit_place().name += call_name;
     add_cf_edge(entry_place(), exit_place());
   }
   EmptyCN(const EmptyCN &) = delete;
@@ -31,6 +33,7 @@ public:
     // no connection
   }
 
+  string call_name;
 };
 
 
@@ -169,7 +172,7 @@ PluginCNGeneric createCommSubnet(const CallSite &cs) {
   } else if (call_name == "MPI_Send") {
     return CN_MPI_Send(cs);
   }
-  return EmptyCN();
+  return EmptyCN(cs);
 }
 
 } // end of anonymous namespace

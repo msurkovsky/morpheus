@@ -388,8 +388,8 @@ struct AddressableCN final : public CommunicationNet {
       csr(add_place("MessageRequest", "", "CompletedSendRequest")),
       crr(add_place("MessageToken", "", "CompletedReceiveRequest")),
       embedded_cn(CommunicationNet()),
-      entry_p_(&add_place("Unit", "", "Entry" + get_id())),
-      exit_p_(&add_place("Unit", "", "Exit" + get_id())) { }
+      entry_p_(&add_place("Unit", "", "ACN" + std::to_string(address) + "Entry" + get_id())),
+      exit_p_(&add_place("Unit", "", "ACN" + std::to_string(address) + "Exit" + get_id())) { }
 
   AddressableCN(const AddressableCN &) = delete;
   AddressableCN(AddressableCN &&) = default;

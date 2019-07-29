@@ -82,6 +82,7 @@ struct CN_MPI_Isend : public PluginCNBase {
     add_output_edge(send, send_reqst,
                     "{" + compute_msg_rqst_value(nullptr, dest, *tag, "buffered") + "}");
 
+    add_cf_edge(send, send_exit);
     add_cf_edge(entry_place(), send_params);
     add_cf_edge(send_exit, exit_place());
 
@@ -121,7 +122,11 @@ struct CN_MPI_Wait : public PluginCNBase {
 
   CN_MPI_Wait(/*const CallSite &cs*/)
     : name_prefix("wait" + get_id()),
-      wait(add_transition({}, name_prefix)) { }
+      wait(add_transition({}, name_prefix)) {
+
+    add_cf_edge(entry_place(), wait);
+    add_cf_edge(wait, exit_place());
+  }
   CN_MPI_Wait(const CN_MPI_Wait &) = delete;
   CN_MPI_Wait(CN_MPI_Wait &&) = default;
 
@@ -139,6 +144,9 @@ struct CN_MPI_Send final : public PluginCNBase {
 
   CN_MPI_Send(const CallSite &cs) : cn_isend(cs), cn_wait(/* TODO: */), t_wait(cn_wait.wait) {
     add_input_edge(cn_isend.send_reqst, t_wait, "(reqst, {id=id})");
+    add_cf_edge(entry_place(), cn_isend.entry_place());
+    add_cf_edge(cn_wait.exit_place(), exit_place());
+    add_cf_edge(cn_isend.exit_place(), cn_wait.entry_place());
 
     takeover(std::move(cn_isend));
     takeover(std::move(cn_wait));

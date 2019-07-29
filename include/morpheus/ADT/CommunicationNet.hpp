@@ -217,22 +217,25 @@ protected:
     return false;
   }
 
-  void reconnect(Edge &e) {
+  void reconnect(const Edge &e) {
     NetElement &startpoint = e.startpoint;
     for (Edge *ref_e : startpoint.referenced_by) {
-      Elements<Edge> &location = ref_e->startpoint.leads_to; // location of owners
-      auto owner = std::find_if(
-        location.begin(), location.end(),
-        [ref_e](const Element<Edge> &o) { return o.get() == ref_e; });
+      Elements<Edge> &owner_storage = ref_e->startpoint.leads_to;
 
-      assert (owner != location.end() && "The owner has to exist!");
+      // find a unique pointer owning the reference pointer `ref_e`
+      auto owner_it = std::find_if(owner_storage.begin(),
+                             owner_storage.end(),
+                             [ref_e](const Element<Edge> &o) { return o.get() == ref_e; });
 
-      Element<Edge> &edge = *owner;
-      Element<Edge> new_edge = make_element_<Edge>(edge->startpoint,
-                                                   e.endpoint,
-                                                   edge->arc_expr,
-                                                   edge->get_category(),
-                                                   edge->get_type());
+      assert (owner_it != owner_storage.end() && "The owner has to exist!");
+
+      Element<Edge> &edge = *owner_it;
+
+      // create a new bypassing edge
+      Element<Edge> new_edge = create_edge_(edge->startpoint, e.endpoint, edge->arc_expr,
+                                            edge->get_category(), edge->get_type());
+
+      // swap the new edge with the old one
       std::swap(edge, new_edge);
     }
   }
@@ -331,13 +334,25 @@ private:
   }
 
   template <typename Startpoint, typename Endpoint>
-  inline Edge& add_edge_(Startpoint &start, Endpoint &end, string ae,
-                  EdgeCategory category, EdgeType type) {
+  inline Element<Edge> create_edge_(Startpoint &start, Endpoint &end, string ae,
+                                    EdgeCategory category, EdgeType type) {
+
     Element<Edge> edge = make_element_<Edge>(start, end, ae, category, type);
     // the end element keeps the pointer to edge which is pointing to it
     end.referenced_by.push_back(edge.get());
-    // the starting element owns the edge
-    return add_(move(edge), start.leads_to);
+
+    return edge;
+  }
+
+  inline Edge& add_edge_(Element<Edge> edge) {
+    return add_(move(edge), edge->startpoint.leads_to);
+  }
+
+  template <typename Startpoint, typename Endpoint>
+  inline Edge& add_edge_(Startpoint &start, Endpoint &end, string ae,
+                  EdgeCategory category, EdgeType type) {
+
+    return add_edge_(create_edge_(start, end, ae, category, type));
   }
 
   template <typename T>

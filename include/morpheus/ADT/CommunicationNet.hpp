@@ -423,15 +423,15 @@ struct AddressableCN final : public CommunicationNet {
   AddressableCN(AddressableCN &&) = default;
 
   // NOTE: the print is redefined to force the formatter to use the right method
-  void print(ostream &os, const formats::Formatter &fmt) const {
+  void print(ostream &os, const formats::Formatter &fmt) const override {
     fmt.format(os, *this);
   }
 
-  void collapse () {
+  void collapse () override {
     embedded_cn.collapse();
   }
 
-  void takeover (CommunicationNet cn) {
+  void takeover (CommunicationNet cn) override{
     embedded_cn.takeover(move(cn));
   }
 

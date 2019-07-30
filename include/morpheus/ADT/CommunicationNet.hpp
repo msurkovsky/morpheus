@@ -161,6 +161,8 @@ struct Transition final : NetElement {
 // ==========================================================
 // CommunicationNet
 
+struct AddressableCN;
+
 class CommunicationNet : public Identifiable,
                          public Printable<CommunicationNet> {
 
@@ -185,6 +187,16 @@ public:
   };
 
 protected:
+
+  virtual bool remove(Place &p) {
+    return remove_(p, places_);
+  }
+
+  virtual bool remove(Transition &t) {
+    return remove_(t, transitions_);
+  }
+
+  bool remove(NetElement &elem);
 
   void remove_refs(const NetElement &elem) {
     for (const std::unique_ptr<Edge> &edge : elem.leads_to) {
@@ -225,6 +237,38 @@ protected:
       assert (it != endpoint.referenced_by.end()
               && "Existing edge is supposed to be referenced by endpoint.");
       endpoint.referenced_by.erase(it);
+    }
+  }
+
+  void remove_path(Elements<Edge> path) {
+    if (path.size() == 1) { // remove single edge path
+      remove_edge(std::move(path.back()));
+    } else if (path.size() > 1) { // remove path of consecutive elements
+
+      // storage for nodes that are going to be removed (nodes on path)
+      // exclude the first and the last nodes.
+      std::vector<NetElement *> to_remove;
+      to_remove.reserve(path.size() - 1);
+
+      // remove edges
+      for (size_t i = 0; i < path.size() - 1; i++) {
+        Element<Edge> &e1 = path[i];
+        Element<Edge> &e2 = path[i + 1];
+
+        assert (&e1->endpoint == &e2->startpoint
+                && "The path has to be composed of consecutive net elements.");
+
+        // remove the first edge, the second one is needed for the following step
+        to_remove.push_back(&e1->endpoint);
+
+        remove_edge(std::move(e1));
+      }
+      remove_edge(std::move(path.back())); // remove the last remaining edge
+
+      // remove the marked net elements (nodes)
+      for (NetElement *ne : to_remove) {
+        remove(*ne);
+      }
     }
   }
 
@@ -302,6 +346,7 @@ public:
   CommunicationNet& operator=(const CommunicationNet &) = delete;
   CommunicationNet& operator=(CommunicationNet &&) = default;
 
+
   virtual void collapse();
   virtual void takeover(CommunicationNet cn);
 
@@ -361,6 +406,19 @@ private:
     return *elements.back();
   }
 
+  template <typename T>
+  inline bool remove_(T &elem, Elements<T> &elements) {
+    auto it = std::find_if(elements.begin(),
+                           elements.end(),
+                           [&elem] (const Element<T> &e) { return e.get() == &elem; });
+    if (it != elements.end()) {
+      remove_refs(**it);  // remove references to the node
+      elements.erase(it); // remove the element itself
+      return true;
+    }
+    return false;
+  }
+
   template <typename Startpoint, typename Endpoint>
   inline Element<Edge> create_edge_(Startpoint &start, Endpoint &end, string ae,
                                     EdgeCategory category, EdgeType type) {
@@ -390,6 +448,8 @@ private:
 
   Elements<Place> places_;
   Elements<Transition> transitions_;
+
+  friend AddressableCN; // make AddressableCN a friend class to override remove methods
 };
 
 // =============================================================================
@@ -435,6 +495,14 @@ struct AddressableCN final : public CommunicationNet {
     embedded_cn.takeover(move(cn));
   }
 
+  bool remove(Place &p) override {
+    return remove_(p);
+  }
+
+  bool remove(Transition &t) override {
+    return remove_(t);
+  }
+
   // ---------------------------------------------------------------------------
   // AddressableCN follows the interface of PluginCN in the sense that it has
   // also entry and exit places. But cannot be injected!
@@ -446,6 +514,17 @@ struct AddressableCN final : public CommunicationNet {
   void set_exit(Place &p) { exit_p_ = &p; }
 
 private:
+  template <typename T>
+  bool remove_(T &elem) {
+    // first, it tries to remove the element in the addressable CN
+    bool removed = CommunicationNet::remove(elem);
+    if (!removed) {
+      // if not successful it tries to remove it in the embedded CN
+      return embedded_cn.remove(elem);
+    }
+    return removed;
+  }
+
   Place *entry_p_;
   Place *exit_p_;
 };

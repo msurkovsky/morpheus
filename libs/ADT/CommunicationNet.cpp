@@ -17,6 +17,19 @@ namespace cn {
   // ---------------------------------------------------------------------------
   // CommunicationNet
 
+  // # protected
+  bool CommunicationNet::remove(NetElement &elem) {
+    if (elem.get_element_type() == "place_t") {
+      return remove(static_cast<Place &>(elem));
+    } else if (elem.get_element_type() == "transition_t") {
+      return remove(static_cast<Transition &>(elem));
+    } else {
+      assert(false && "Unknown type of the net element.");
+    }
+    return false;
+  }
+
+  // + public methods
   void CommunicationNet::collapse() {
     CommunicationNet tmp_cn;
 

@@ -15,7 +15,10 @@
 #include "morpheus/Utils.hpp"
 #include "morpheus/Formats/Formatter.hpp"
 
+#include <algorithm>
+#include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <sstream>
 #include <utility>
@@ -191,6 +194,10 @@ public:
   };
 
 protected:
+  // -------------------------------------------------------
+  // removing methods
+  using path_t = vector<const Edge *>;
+
 
   virtual bool remove(Place &p) {
     return remove_(p, places_);
@@ -276,6 +283,154 @@ protected:
     }
   }
 
+  // -------------------------------------------------------
+  // transitions of CN
+  using color_t = unsigned short;
+  using coloured_elem_t = pair<const NetElement *, color_t>;
+  using elem_colors_t = map<const NetElement *, set<color_t>>;
+
+  vector<path_t> backtrack_edge(const Edge &edge,
+                                color_t color,
+                                elem_colors_t &assigned_colors,
+                                std::map<coloured_elem_t, path_t> &pbw_paths) const {
+
+    const NetElement *startpoint = &edge.startpoint;
+    const NetElement *endpoint = &edge.endpoint;
+    auto pbw_path_it = pbw_paths.find({endpoint, color});
+
+    assert(pbw_path_it != pbw_paths.end()
+           && "The endpoint of the given edge has to already be among paths");
+    const path_t &pbw_path = pbw_path_it->second;
+
+    // prolong the partial path and store it to the starting point
+    path_t e_pbw_path(pbw_path); // make a copy
+    e_pbw_path.push_back(&edge); // prolong the path
+    pbw_paths.insert({ {startpoint, color}, move(e_pbw_path) });
+
+    vector<const Edge *> unprocessed;
+
+    auto colors_it = assigned_colors.find(startpoint);
+    if (colors_it == assigned_colors.end()) {
+    // the element is colored for the first time
+
+      // color the starting point
+      assigned_colors.insert({startpoint, {color}});
+
+      // TODO: what if the node is referenced by more than one edge? Is it correct to consider it a parallel path?
+
+      // and copy referencing edges into unprocessed
+      std::copy(startpoint->referenced_by.begin(),
+                startpoint->referenced_by.end(),
+                std::back_inserter(unprocessed));
+
+    } else {
+    // the element was already colored by a color
+
+      set<color_t> &used_colors = colors_it->second;
+      used_colors.insert(color);
+
+      if (used_colors.size() > 1) { // the inserted color might be the same one
+
+        // two different colors means two independent parallel paths
+        vector<path_t> prl_bw_paths; // parallel backward paths
+        for (auto const& c : used_colors) {
+          auto it = pbw_paths.find({startpoint, c});
+          assert (it != pbw_paths.end());
+
+          prl_bw_paths.push_back(it->second);
+        }
+        return prl_bw_paths;
+      }
+    }
+
+    for (const Edge *e : unprocessed) {
+      return backtrack_edge(*e, color, assigned_colors, pbw_paths);
+    }
+
+    return {};
+  }
+
+  vector<path_t> backtrack_parallel_paths(const NetElement &elem) const {
+    assert (elem.referenced_by.size() >= 2
+            && "Backtracking of parallel paths works only on elements"
+               " that are referenced at least two other nodes.");
+
+    vector<path_t> resulting_paths;
+
+    color_t color = 0;
+    elem_colors_t assigned_colors;
+    map<coloured_elem_t, path_t> pbw_paths; // partial backward paths
+
+    for (const Edge *edge : elem.referenced_by) {
+      color_t c = ++color;
+      const NetElement *endpoint = &edge->endpoint;
+
+      assigned_colors.insert({ endpoint, {c} });
+      pbw_paths.insert({ {endpoint, c}, {} });
+
+      vector<path_t> found_bw_paths = backtrack_edge(*edge, c, assigned_colors, pbw_paths);
+      move(found_bw_paths.begin(),
+           found_bw_paths.end(),
+           back_inserter(resulting_paths));
+    }
+    return resulting_paths;
+  }
+
+  template <typename T>
+  vector<path_t> find_parallel_paths(const Elements<T> &elements) {
+
+    for (const auto &elem : elements) {
+      if (elem->referenced_by.size() > 1) {
+        vector<path_t> found_paths = backtrack_parallel_paths(*elem);
+        for (path_t &path : found_paths) {
+          // reverse each path to change the backward storage
+          reverse(path.begin(), path.end());
+        }
+        return found_paths;
+      }
+    }
+
+    return {};
+  }
+
+  void reduce_parallel_paths() {
+    EdgePredicate<CONTROL_FLOW> is_cf;
+
+    while (true) {
+      vector<path_t> to_remove;
+      { // find paths that ends at places
+        vector<path_t> found_paths = find_parallel_paths(places_);
+        for (path_t &p : found_paths) {
+          if (all_of(p.begin(), p.end(), is_cf)) {
+            to_remove.push_back(move(p));
+            break;
+          }
+        }
+      }
+
+      { // find paths that ends at transitions
+        vector<path_t> found_paths = find_parallel_paths(transitions_);
+        for (path_t &p : found_paths) {
+          if (all_of(p.begin(), p.end(), is_cf)) {
+            to_remove.push_back(move(p));
+            break;
+          }
+        }
+      }
+
+      if (to_remove.empty()) {
+        // if no parallel edge is found break the cycle,
+        // otherwise run the procedure on reduced graph
+        break;
+
+      } else {
+        for (path_t &p : to_remove) {
+          remove_path(p);
+        }
+      }
+    }
+  }
+
   bool is_collapsible(const Edge &e) const {
     EdgePredicate<CONTROL_FLOW> is_cf;
 
@@ -340,6 +495,9 @@ protected:
       idx++;
     }
   }
+
+  // -------------------------------------------------------
+  // CommunicationNet public API
 
 public:
   virtual ~CommunicationNet() = default;

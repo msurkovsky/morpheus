@@ -37,6 +37,8 @@ namespace cn {
     collapse(transitions_, tmp_cn, &CommunicationNet::transitions_);
 
     std::swap(tmp_cn, *this);
+
+    reduce_parallel_paths();
   }
 
   void CommunicationNet::takeover(CommunicationNet cn) {

@@ -495,14 +495,6 @@ struct AddressableCN final : public CommunicationNet {
     embedded_cn.takeover(move(cn));
   }
 
-  bool remove(Place &p) override {
-    return remove_(p);
-  }
-
-  bool remove(Transition &t) override {
-    return remove_(t);
-  }
-
   // ---------------------------------------------------------------------------
   // AddressableCN follows the interface of PluginCN in the sense that it has
   // also entry and exit places. But cannot be injected!
@@ -514,6 +506,15 @@ struct AddressableCN final : public CommunicationNet {
   void set_exit(Place &p) { exit_p_ = &p; }
 
 private:
+  // override the protected methods to work correctly within the context of addressable CN
+  bool remove(Place &p) override {
+    return remove_(p);
+  }
+
+  bool remove(Transition &t) override {
+    return remove_(t);
+  }
+
   template <typename T>
   bool remove_(T &elem) {
     // first, it tries to remove the element in the addressable CN

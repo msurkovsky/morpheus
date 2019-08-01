@@ -216,9 +216,9 @@ protected:
     }
   }
 
-  void remove_edge(Element<Edge> edge) {
-    NetElement &startpoint = edge->startpoint;
-    NetElement &endpoint = edge->endpoint;
+  void remove_edge(const Edge &edge) {
+    NetElement &startpoint = edge.startpoint;
+    NetElement &endpoint = edge.endpoint;
 
     { // remove the edge
 
@@ -226,7 +226,7 @@ protected:
       // there is "invalid" pointer to it which has to be removed.
       auto it = std::find_if(startpoint.leads_to.begin(),
                              startpoint.leads_to.end(),
-                             [] (Element<Edge> &e) { return !e; });
+                             [&edge] (Element<Edge> &e) { return e.get() == &edge; });
 
       assert (it != startpoint.leads_to.end()
               && "Existing edge leaves invalid storage place in its starting point.");
@@ -236,7 +236,7 @@ protected:
     { // remove stored pointer to referenced edge
       auto it = std::find_if(endpoint.referenced_by.begin(),
                              endpoint.referenced_by.end(),
-                             [&edge] (const Edge *e) { return e == edge.get(); });
+                             [&edge] (const Edge *e) { return e == &edge; });
 
       assert (it != endpoint.referenced_by.end()
               && "Existing edge is supposed to be referenced by endpoint.");
@@ -244,9 +244,9 @@ protected:
     }
   }
 
-  void remove_path(Elements<Edge> path) {
+  void remove_path(path_t &path) {
     if (path.size() == 1) { // remove single edge path
-      remove_edge(std::move(path.back()));
+      remove_edge(*path.back());
     } else if (path.size() > 1) { // remove path of consecutive elements
 
       // storage for nodes that are going to be removed (nodes on path)
@@ -256,8 +256,8 @@ protected:
 
       // remove edges
       for (size_t i = 0; i < path.size() - 1; i++) {
-        Element<Edge> &e1 = path[i];
-        Element<Edge> &e2 = path[i + 1];
+        const Edge *e1 = path[i];
+        const Edge *e2 = path[i + 1];
 
         assert (&e1->endpoint == &e2->startpoint
                 && "The path has to be composed of consecutive net elements.");
@@ -265,9 +265,9 @@ protected:
         // remove the first edge, the second one is needed for the following step
         to_remove.push_back(&e1->endpoint);
 
-        remove_edge(std::move(e1));
+        remove_edge(*e1);
       }
-      remove_edge(std::move(path.back())); // remove the last remaining edge
+      remove_edge(*path.back()); // remove the last remaining edge
 
       // remove the marked net elements (nodes)
       for (NetElement *ne : to_remove) {

@@ -184,6 +184,10 @@ public:
     bool operator()(const Edge &e) const {
       return e.get_category() == C;
     }
+
+    bool operator()(const Edge *e) const {
+      return e->get_category() == C;
+    }
   };
 
 protected:

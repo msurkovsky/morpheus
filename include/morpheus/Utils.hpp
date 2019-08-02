@@ -75,7 +75,10 @@ std::string value_to_str(const llvm::Value &v, std::string name, bool return_con
 
 std::string compute_envelope_type(llvm::Value const *src,
                                   llvm::Value const *dest,
-                                  const llvm::Value &tag) {
+                                  const llvm::Value &tag,
+                                  std::string delim=",",
+                                  std::string lbracket="",
+                                  std::string rbracket="") {
 
   using namespace std::placeholders;
   auto store_non_empty = std::bind(store_if_not<std::string>, _1, _2, "");
@@ -90,13 +93,16 @@ std::string compute_envelope_type(llvm::Value const *src,
   }
   store_non_empty(types, value_to_type(tag, false));
 
-  return pp_vector(types);
+  return pp_vector(types, delim, lbracket, rbracket);
 }
 
 std::string compute_envelope_value(llvm::Value const *src,
                                    llvm::Value const *dest,
                                    const llvm::Value &tag,
-                                   bool include_constant=true) {
+                                   bool include_constant=true,
+                                   std::string delim="",
+                                   std::string lbracket="",
+                                   std::string rbracket="") {
 
   using namespace std::placeholders;
   auto store_non_empty = std::bind(store_if_not<std::string>, _1, _2, "");
@@ -112,7 +118,7 @@ std::string compute_envelope_value(llvm::Value const *src,
 
   store_non_empty(var_names, value_to_str(tag, "tag", include_constant));
 
-  return pp_vector(var_names);
+  return pp_vector(var_names, delim, lbracket, rbracket);
 }
 
 std::string compute_data_buffer_type(const llvm::Value &) {

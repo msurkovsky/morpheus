@@ -49,6 +49,7 @@ struct CN_MPI_Isend : public PluginCNBase {
   //   int dest,               // it goes to the setting place
   //   int tag,                // it goes to the setting place
   //   MPI_Comm comm           // THIS IS IGNORED AND IT IS SUPPOSED TO BE MPI_COMM_WORLD
+  //   MPI_Request *request    // locally stored request that is accompanied with CN's type: MessageRequest
   // );
 
   std::string name_prefix;
@@ -137,7 +138,8 @@ struct CN_MPI_Wait : public PluginCNBase {
 
 
 // ------------------------------------------------------------------------------
-// CN_MPI_Isend
+// CN_MPI_Send
+
 struct CN_MPI_Send final : public PluginCNBase {
 
   virtual ~CN_MPI_Send() = default;

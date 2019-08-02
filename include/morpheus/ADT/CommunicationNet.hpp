@@ -374,10 +374,9 @@ protected:
     return resulting_paths;
   }
 
-  template <typename T>
-  vector<path_t> find_parallel_paths(const Elements<T> &elements) {
+  vector<path_t> find_parallel_paths(const vector<const NetElement *> &elements) {
 
-    for (const auto &elem : elements) {
+    for (const NetElement *elem : elements) {
       if (elem->referenced_by.size() > 1) {
         vector<path_t> found_paths = backtrack_parallel_paths(*elem);
         for (path_t &path : found_paths) {
@@ -394,25 +393,24 @@ protected:
   void reduce_parallel_paths() {
     EdgePredicate<CONTROL_FLOW> is_cf;
 
-    while (true) {
-      vector<path_t> to_remove;
-      { // find paths that ends at places
-        vector<path_t> found_paths = find_parallel_paths(places_);
-        for (path_t &p : found_paths) {
-          if (all_of(p.begin(), p.end(), is_cf)) {
-            to_remove.push_back(move(p));
-            break;
-          }
-        }
-      }
+    // put both places and transitions into one (NetElement*) vector
+    vector<const NetElement*> elements;
+    transform(places_.begin(), places_.end(), back_inserter(elements),
+              [] (const Element<Place> &place) { return place.get(); });
+    transform(transitions_.begin(), transitions_.end(), back_inserter(elements),
+              [] (const Element<Transition> &transition) { return transition.get(); });
 
-      { // find paths that ends at transitions
-        vector<path_t> found_paths = find_parallel_paths(transitions_);
-        for (path_t &p : found_paths) {
-          if (all_of(p.begin(), p.end(), is_cf)) {
-            to_remove.push_back(move(p));
-            break;
-          }
+    // find and remove paths
+
+    // NOTE: maybe it would help to topologically sort the nodes,
+    //       but it is rather minor performance improvement.
+    while (true) {
+      path_t to_remove;
+      vector<path_t> found_paths = find_parallel_paths(elements);
+      for (path_t &p : found_paths) {
+        if (all_of(p.begin(), p.end(), is_cf)) {
+          swap(p, to_remove);
+          break;
         }
       }
 
@@ -422,9 +420,7 @@ protected:
         break;
 
       } else {
-        for (path_t &p : to_remove) {
-          remove_path(p);
-        }
+        remove_path(to_remove);
       }
     }
   }

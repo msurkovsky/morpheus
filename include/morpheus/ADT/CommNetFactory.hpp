@@ -107,6 +107,71 @@ private:
 
 
 // ------------------------------------------------------------------------------
+// CN_MPI_Irecv
+
+struct CN_MPI_Irecv : public PluginCNBase {
+  // MPI_Irecv(
+  //   void* buff;             // OUT; data set to 'recv_data' -- this is done via corresponding wait
+  //   int count,              // IN
+  //   MPI_Datatype datatype,  // IN;  data type of 'recv_data' place
+  //   int source,             // IN;  it goes to the setting place
+  //   int tag,                // IN;  it goes to the setting place
+  //   MPI_Comm comm,          // IN;  IGNORED (for the current version it is supposed to be MPI_COMM_WORLD)
+  //   MPI_Request *request    // OUT; locally stored request it is accompanied with CNs' type: MessageRequest
+  // );
+
+  std::string name_prefix;
+  Place &recv_params;
+  Place &recv_data;
+  Place &recv_reqst;
+  Place &recv_exit;
+  Transition &recv;
+
+  virtual ~CN_MPI_Irecv() = default;
+
+  CN_MPI_Irecv(const CallSite &cs):
+    name_prefix("recv" + get_id()),
+    recv_params(add_place("<empty>", "", name_prefix + "_params")),
+    recv_data(add_place("<empty>", "", name_prefix + "_data")),
+    recv_reqst(add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
+    recv_exit(add_place("Unit", "", name_prefix + "_exit")),
+    recv(add_transition({}, name_prefix)) {
+
+    size = cs.getArgument(1);
+    datatype = cs.getArgument(2);
+    source = cs.getArgument(3);
+    tag = cs.getArgument(4);
+
+    recv_params.type = compute_envelope_type(source, nullptr, *tag, ",", "(", ")");
+
+    recv_data.type = compute_data_buffer_type(*datatype);
+
+    add_input_edge(recv_params, recv,
+                   compute_envelope_value(source, nullptr, *tag, false, ",", "(", ")"));
+
+    add_output_edge(recv, recv_reqst,
+                    "{" + compute_msg_rqst_value(source, nullptr, *tag, "false") + "}");
+
+    add_cf_edge(recv, recv_exit);
+    add_cf_edge(entry_place(), recv_params);
+    add_cf_edge(recv_exit, exit_place());
+  }
+
+  CN_MPI_Irecv(const CN_MPI_Irecv &) = delete;
+  CN_MPI_Irecv(CN_MPI_Irecv &&) = default;
+
+  virtual void connect(const AddressableCN &acn) {
+    add_output_edge(recv, acn.arr, compute_msg_rqst_value(source, nullptr, *tag, "false"));
+  }
+
+private:
+  Value const *size;
+  Value const *datatype;
+  Value const *source;
+  Value const *tag;
+};
+
+// ------------------------------------------------------------------------------
 // CN_MPI_Isend
 
 struct CN_MPI_Wait : public PluginCNBase {
@@ -169,6 +234,49 @@ private:
   Transition &t_wait;
 };
 
+
+// ------------------------------------------------------------------------------
+// CN_MPI_Isend
+
+struct CN_MPI_Recv final : public PluginCNBase {
+
+  virtual ~CN_MPI_Recv() = default;
+
+  CN_MPI_Recv(const CallSite &cs)
+    : cn_irecv(cs),
+      cn_wait(/* TODO: */),
+      t_wait(cn_wait.wait) {
+
+    Value const *size = cs.getArgument(1);
+    Value const *datatype = cs.getArgument(2);
+
+    add_input_edge(cn_irecv.recv_reqst, t_wait, "(reqst, {id=id})");
+    add_output_edge(t_wait, cn_irecv.recv_data,
+                    compute_data_buffer_value(*datatype, *size));
+
+    add_cf_edge(entry_place(), cn_irecv.entry_place());
+    add_cf_edge(cn_wait.exit_place(), exit_place());
+    add_cf_edge(cn_irecv.exit_place(), cn_wait.entry_place());
+
+    takeover(std::move(cn_irecv));
+    takeover(std::move(cn_wait));
+  }
+
+  CN_MPI_Recv(const CN_MPI_Recv &) = delete;
+  CN_MPI_Recv(CN_MPI_Recv &&) = default;
+
+  void connect (const AddressableCN &acn) {
+    cn_irecv.connect(acn);
+    add_input_edge(acn.crr, t_wait, "{data=data, envelope={id=id}}", SHUFFLE);
+  }
+
+private:
+  CN_MPI_Irecv cn_irecv;
+  CN_MPI_Wait cn_wait;
+
+  Transition &t_wait;
+};
+
 // ===========================================================================
 // CNs factory
 
@@ -181,6 +289,10 @@ PluginCNGeneric createCommSubnet(const CallSite &cs) {
     return CN_MPI_Isend(cs);
   } else if (call_name == "MPI_Send") {
     return CN_MPI_Send(cs);
+  } else if (call_name == "MPI_Irecv") {
+    return CN_MPI_Irecv(cs);
+  } else if (call_name == "MPI_Recv") {
+    return CN_MPI_Recv(cs);
   }
   return EmptyCN(cs);
 }

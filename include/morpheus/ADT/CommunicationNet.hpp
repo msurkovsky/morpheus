@@ -307,7 +307,8 @@ protected:
     e_pbw_path.push_back(&edge); // prolong the path
     pbw_paths.insert({ {startpoint, color}, move(e_pbw_path) });
 
-    vector<const Edge *> unprocessed;
+    // vector<const Edge *> unprocessed;
+    const Edge *unprocessed_edge = nullptr;
 
     auto colors_it = assigned_colors.find(startpoint);
     if (colors_it == assigned_colors.end()) {
@@ -316,13 +317,10 @@ protected:
       // color the starting point
       assigned_colors.insert({startpoint, {color}});
 
-      // TODO: what if the node is referenced by more than one edge? Is it correct to consider it a parallel path?
-
-      // and copy referencing edges into unprocessed
-      std::copy(startpoint->referenced_by.begin(),
-                startpoint->referenced_by.end(),
-                std::back_inserter(unprocessed));
-
+      if (startpoint->referenced_by.size() == 1) {
+        // process only further edges if there is no branching
+        unprocessed_edge = startpoint->referenced_by.back();
+      }
     } else {
     // the element was already colored by a color
 
@@ -343,8 +341,8 @@ protected:
       }
     }
 
-    for (const Edge *e : unprocessed) {
-      return backtrack_edge(*e, color, assigned_colors, pbw_paths);
+    if (unprocessed_edge) {
+      return backtrack_edge(*unprocessed_edge, color, assigned_colors, pbw_paths);
     }
 
     return {};

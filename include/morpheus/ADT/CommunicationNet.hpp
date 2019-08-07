@@ -381,11 +381,13 @@ protected:
     for (const NetElement *elem : elements) {
       if (elem->referenced_by.size() > 1) {
         vector<path_t> found_paths = backtrack_parallel_paths(*elem);
-        for (path_t &path : found_paths) {
-          // reverse each path to change the backward storage
-          reverse(path.begin(), path.end());
+        if (!found_paths.empty()) {
+          for (path_t &path : found_paths) {
+            // reverse each path to change the backward storage
+            reverse(path.begin(), path.end());
+          }
+          return found_paths;
         }
-        return found_paths;
       }
     }
 

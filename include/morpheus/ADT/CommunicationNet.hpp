@@ -730,8 +730,9 @@ public:
 
   void takeover(CommunicationNet cn) { self_->takeover_(move(cn)); }
 
-  void renounce_in_favor_of(CommunicationNet &cn) {
-    move(self_)->renounce_in_favor_of_(cn);
+  template <typename PluggableCN>
+  void renounce_in_favor_of(PluggableCN &pcn) {
+    move(self_)->renounce_in_favor_of_(pcn);
     self_.release();
   }
 
@@ -756,6 +757,7 @@ private:
 
     virtual void takeover_(CommunicationNet cn) = 0;
     virtual void renounce_in_favor_of_(CommunicationNet &cn) = 0;
+    virtual void renounce_in_favor_of_(PluginCNGeneric &cn) = 0;
     virtual void connect_(AddressableCN &) = 0;
     virtual void inject_into_(AddressableCN &) = 0;
     virtual void inject_into_(PluginCNGeneric &) = 0;
@@ -778,6 +780,10 @@ private:
 
     void renounce_in_favor_of_(CommunicationNet &cn) override {
       cn.takeover(move(pcn_));
+    }
+
+    void renounce_in_favor_of_(PluginCNGeneric &pcn) override {
+      pcn.takeover(move(pcn_));
     }
 
     void connect_(AddressableCN &acn) override {

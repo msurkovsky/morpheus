@@ -101,7 +101,7 @@ private:
 // ------------------------------------------------------------------------------
 // CN_MPI_Isend
 
-class CN_MPI_Wait : public BaseSendRecv {
+struct CN_MPI_Wait : public PluginCNBase {
 
   // MPI_Wait(
   //   MPI_Request *request // INOUT
@@ -111,17 +111,16 @@ class CN_MPI_Wait : public BaseSendRecv {
   std::string name_prefix;
   Transition &wait;
 
-public:
-  CN_MPI_Wait(const CallSite &cs)
+  virtual ~CN_MPI_Wait() = default;
+
+  CN_MPI_Wait(/*const CallSite &cs*/)
     : name_prefix("wait" + id),
       wait(add_transition({}, name_prefix)) { }
+  CN_MPI_Wait(const CN_MPI_Wait &) = delete;
+  CN_MPI_Wait(CN_MPI_Wait &&) = default;
 
-  virtual void connect_csr(const Place &p) {
-    // TODO: add input arcs according to the request type
-  }
-
-  virtual void connect_crr(const Place &p) {
-    // TODO: add input arcs according to the request type
+  virtual void connect(const AddressableCN &acn) {
+    add_input_edge(acn.csr /* TODO: choose according to type */, wait, SHUFFLE, "TODO:");
   }
 };
 

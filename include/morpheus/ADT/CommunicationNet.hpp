@@ -240,6 +240,23 @@ public:
     takeover_(cf_edges_, cn.control_flow_edges());
   }
 
+  virtual void print (raw_ostream &os) const {
+    os << "CommunicationNet(" << id << "):\n";
+
+    os << "Places:\n";
+    print_(places_, os, 2);
+
+    os << "Transitions:\n";
+    print_(transitions_, os, 2);
+
+    os << "Input edges:\n";
+    print_(input_edges_, os, 2);
+
+    os << "Outuput edges:\n";
+    print_(output_edges_, os, 2);
+
+    os << "CF edges:\n";
+    print_(cf_edges_, os, 2);
   }
 
   places_iterator       places_begin()       { return place_list.begin(); }
@@ -316,44 +333,37 @@ public:
     return make_range(cfedges_begin(), cfedges_end());
   }
 
-  virtual void print (raw_ostream &os) const {
-    os << "CommunicationNet(" << id << "):\n";
+private:
+  template <typename T, typename... Args>
+  Element<T> make_element_(Args&&... args) {
+    return std::make_unique<T>(forward<Args>(args)...);
+  }
 
-    if (!places_empty()) {
-      os << "Places:\n";
-      for (auto &p : places()) {
-        os << "  " << *p << "\n";
-      }
-    }
+  template <typename T>
+  T& add_(Element<T> e, Elements<T> &elements) {
+    elements.push_back(move(e));
+    return *elements.back();
+  }
 
-    if (!transitions_empty()) {
-      os << "Transitions:\n";
-      for (auto &t : transitions()) {
-        os << "  " << *t << "\n";
-      }
-    }
+  template <typename T>
+  void takeover_(Elements<T> &target, iterator_range<typename Elements<T>::iterator> src) {
+    move(src.begin(), src.end(), back_inserter(target));
+  }
 
-    if (!iedges_empty()) {
-      os << "Input edges:\n";
-      for (auto &e : input_edges()) {
-        os << "  " << *e << "\n";
-      }
-    }
-
-    if (!oedges_empty()) {
-      os << "Outuput edges:\n";
-      for (auto &e : output_edges()) {
-        os << "  " << *e << "\n";
-      }
-    }
-
-    if (!cfedges_empty()) {
-      os << "CF edges:\n";
-      for (auto &e : control_flow_edges()) {
-        os << "  " << *e << "\n";
-      }
+  template <typename T>
+  void print_(const Elements<T> &elements, raw_ostream &os, size_t pos=0) const {
+    for (const auto &e : elements) {
+      os << std::string(pos, ' ');
+      print_(e, os);
+      os << "\n";
     }
   }
+
+  template <typename T>
+  void print_(const Element<T> &elem, raw_ostream &os, size_t pos=0) const {
+    os << std::string(pos, ' ') << *elem; // Element<T> = unique_ptr<T>
+  }
+
   Elements<Place> places_;
   Elements<Transition> transitions_;
 

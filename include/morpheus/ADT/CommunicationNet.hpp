@@ -48,7 +48,7 @@ raw_ostream &operator<< (raw_ostream &os, const Printable &printable) {
 
 
 struct Identifiable {
-  using ID = std::string;
+  using ID = string;
 
   const ID id;
 
@@ -87,10 +87,10 @@ struct Edge : public Printable {
   const NetElement &startpoint;
   const NetElement &endpoint;
   EdgeType type; // TODO: maybe define separates types for it
-  std::string arc_expr;
+  string arc_expr;
 
   explicit Edge(const NetElement &startpoint, const NetElement &endpoint,
-                EdgeType type, std::string arc_expr)
+                EdgeType type, string arc_expr)
     : startpoint(startpoint), endpoint(endpoint),
       type(type), arc_expr(arc_expr) { }
 

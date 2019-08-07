@@ -980,20 +980,26 @@ struct CFG_CN final : public PluginCNBase {
   CFG_CN(CFG_CN &&) = default;
 
   void connect (AddressableCN &acn) {
-    // connection is done within injections of particular BasicBlockCNs
-    errs() << "who is calling connect?\n";
+    for (BasicBlockCN &bbcn : bb_cns) {
+      bbcn.connect(acn);
+    }
   }
 
-  void inject_into(AddressableCN &acn) && {
+  template<typename PluggableCN>
+  void inject_into(PluggableCN &pcn) && {
+    // NOTE: as the implementation is the same for both type of injections (PluginCNGeneric &
+    //       AddressableCN) the method is tempalted. Moreover, `connect` is called separately
+    //       within injections of particular BasicBlockCNs.
+
     for (BasicBlockCN &bbcn : bb_cns) {
-      move(bbcn).inject_into(acn);
+      move(bbcn).inject_into(pcn);
     }
 
-    add_cf_edge(acn.entry_place(), entry_place());
+    add_cf_edge(pcn.entry_place(), entry_place());
 
-    acn.set_entry(exit_place());
+    pcn.set_entry(exit_place());
 
-    acn.takeover(move(*this));
+    pcn.takeover(move(*this));
   }
 
 private:

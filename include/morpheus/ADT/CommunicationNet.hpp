@@ -164,85 +164,82 @@ struct Transition final : NetElement {
 };
 
 
-// ==============================================================================
+// ==========================================================
+// CommunicationNet
 
-class CommunicationNet : public Identifiable, public Printable {
+class CommunicationNet : public Identifiable,
+                         public Printable {
 
-public:
-  using places_iterator = vector<unique_ptr<Place>>::iterator;
-  using transitions_iterator = vector<unique_ptr<Transition>>::iterator;
-  using edges_iterator = vector<unique_ptr<Edge>>::iterator;
+  template <typename T>
+  using Element = unique_ptr<T>;
 
-  using const_places_iterator = vector<unique_ptr<Place>>::const_iterator;
-  using const_transitions_iterator = vector<unique_ptr<Transition>>::const_iterator;
-  using const_edges_iterator = vector<unique_ptr<Edge>>::const_iterator;
-
-private:
-  vector<unique_ptr<Place>> place_list;
-  vector<unique_ptr<Transition>> transition_list;
-
-  vector<unique_ptr<Edge>> input_edge_list;
-  vector<unique_ptr<Edge>> output_edge_list;
-  vector<unique_ptr<Edge>> control_flow_edge_list;
-
-  Edge &add_edge_to_list(std::unique_ptr<Edge> e,
-                         std::vector<unique_ptr<Edge>> &edge_list) {
-
-    edge_list.push_back(std::move(e));
-    return *edge_list.back();
-  }
+  template <typename T>
+  using Elements = vector<Element<T>>;
 
 public:
+  using places_iterator      = Elements<Place>::iterator;
+  using transitions_iterator = Elements<Transition>::iterator;
+  using edges_iterator       = Elements<Edge>::iterator;
+
+  using const_places_iterator      = Elements<Place>::const_iterator;
+  using const_transitions_iterator = Elements<Transition>::const_iterator;
+  using const_edges_iterator       = Elements<Edge>::const_iterator;
+
+  virtual ~CommunicationNet() = default;
+
   CommunicationNet() = default;
   CommunicationNet(const CommunicationNet &) = delete;
   CommunicationNet(CommunicationNet &&) = default;
 
-  Place &add_place(string type, string init_expr, string name="") {
-    place_list.push_back(std::make_unique<Place>(name, type, init_expr));
-    return *place_list.back();
+  Place& add_place(string type, string init_expr, string name="") {
+    return add_(make_element_<Place>(name, type, init_expr), places_);
   }
 
-  Place &add_place(std::unique_ptr<Place> p) {
-    place_list.push_back(std::move(p));
-    return *place_list.back();
+  Place& add_place(Element<Place> p) {
+    return add_(move(p), places_);
   }
 
-  Transition &add_transition(ConditionList cl, string name="") {
-    transition_list.push_back(std::make_unique<Transition>(name, cl));
-    return *transition_list.back();
+  Transition& add_transition(ConditionList cl, string name="") {
+    return add_(make_element_<Transition>(name, cl), transitions_);
   }
 
-  Transition &add_transition(std::unique_ptr<Transition> t) {
-    transition_list.push_back(std::move(t));
-    return *transition_list.back();
+  Transition& add_transition(Element<Transition> t) {
+    return add_(move(t), transitions_);
   }
 
-  Edge &add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE, std::string ae="") {
-    input_edge_list.push_back(std::make_unique<Edge>(src, dest, type, ae));
-    return *input_edge_list.back();
+  Edge& add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE, string ae="") {
+    return add_(make_element_<Edge>(src, dest, type, ae), input_edges_);
   }
 
-  Edge &add_input_edge(std::unique_ptr<Edge> e) {
-    return add_edge_to_list(std::move(e), input_edge_list);
+  Edge& add_input_edge(unique_ptr<Edge> e) {
+    return add_(move(e), input_edges_);
   }
 
-  Edge &add_output_edge(const Transition &src, const Place &dest, std::string ae="") {
-    output_edge_list.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
-    return *output_edge_list.back();
+  Edge& add_output_edge(const Transition &src, const Place &dest, string ae="") {
+    return add_(make_element_<Edge>(src, dest, TAKE, ae), output_edges_);
   }
 
-  Edge &add_output_edge(std::unique_ptr<Edge> e) {
-    return add_edge_to_list(std::move(e), output_edge_list);
+  Edge& add_output_edge(unique_ptr<Edge> e) {
+    return add_(move(e), output_edges_);
   }
 
   template<typename Startpoint, typename Endpoint>
-  Edge &add_cf_edge(const Startpoint& src, const Endpoint& dest, std::string ae="") {
-    control_flow_edge_list.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
-    return *control_flow_edge_list.back();
+  Edge& add_cf_edge(const Startpoint& src, const Endpoint& dest, string ae="") {
+    return add_(make_element_<Edge>(src, dest, TAKE, ae), cf_edges_);
   }
 
-  Edge &add_cf_edge(std::unique_ptr<Edge> e) {
-    return add_edge_to_list(std::move(e), control_flow_edge_list);
+  Edge &add_cf_edge(unique_ptr<Edge> e) {
+    return add_(move(e), cf_edges_);
+  }
+
+  void takeover(CommunicationNet cn) {
+    takeover_(places_, cn.places());
+    takeover_(transitions_, cn.transitions());
+    takeover_(input_edges_, cn.input_edges());
+    takeover_(output_edges_, cn.output_edges());
+    takeover_(cf_edges_, cn.control_flow_edges());
+  }
+
   }
 
   places_iterator       places_begin()       { return place_list.begin(); }
@@ -357,6 +354,12 @@ public:
       }
     }
   }
+  Elements<Place> places_;
+  Elements<Transition> transitions_;
+
+  Elements<Edge> input_edges_;
+  Elements<Edge> output_edges_;
+  Elements<Edge> cf_edges_;
 };
 
 class PluginCommNet : public CommunicationNet {

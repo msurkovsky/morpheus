@@ -72,15 +72,22 @@ struct Edge : public Printable {
   const Element &startpoint;
   const Element &endpoint;
   EdgeType type;
+  std::string arc_expr;
 
-  explicit Edge(const Element &startpoint, const Element &endpoint, EdgeType type)
-    : startpoint(startpoint), endpoint(endpoint), type(type) { }
+  explicit Edge(const Element &startpoint, const Element &endpoint,
+                EdgeType type, std::string arc_expr)
+    : startpoint(startpoint), endpoint(endpoint),
+      type(type), arc_expr(arc_expr) { }
 
   Edge(const Edge &) = delete;
   Edge(Edge &&) = default;
 
   void print (raw_ostream &os) const {
-    os << startpoint << " -> " << endpoint;
+    if (arc_expr.empty()) {
+      os << startpoint << " -> " << endpoint;
+    } else {
+      os << startpoint << " --/ " << arc_expr << " /--> " << endpoint;
+    }
   }
 };
 
@@ -172,19 +179,19 @@ public:
     return transitions.back().get();
   }
 
-  Edge *add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE) {
-    input_edges.push_back(std::make_unique<Edge>(src, dest, type));
+  Edge *add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE, std::string ae="") {
+    input_edges.push_back(std::make_unique<Edge>(src, dest, type, ae));
     return input_edges.back().get();
   }
 
-  Edge *add_output_edge(const Transition &src, const Place &dest) {
-    output_edges.push_back(std::make_unique<Edge>(src, dest, TAKE));
+  Edge *add_output_edge(const Transition &src, const Place &dest, std::string ae="") {
+    output_edges.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
     return output_edges.back().get();
   }
 
   template<typename Startpoint, typename Endpoint>
-  Edge const *add_cf_edge(const Startpoint& src, const Endpoint& dest) {
-    control_flow_edges.push_back(std::make_unique<Edge>(src, dest, TAKE));
+  Edge const *add_cf_edge(const Startpoint& src, const Endpoint& dest, std::string ae="") {
+    control_flow_edges.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
     return control_flow_edges.back().get();
   }
 

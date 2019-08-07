@@ -83,7 +83,7 @@ struct NetElement : public Identifiable, public Printable {
 };
 
 
-struct Edge : public Printable {
+struct Edge final : public Printable {
   const NetElement &startpoint;
   const NetElement &endpoint;
   EdgeType type; // TODO: maybe define separates types for it
@@ -93,11 +93,8 @@ struct Edge : public Printable {
                 EdgeType type, string arc_expr)
     : startpoint(startpoint), endpoint(endpoint),
       type(type), arc_expr(arc_expr) { }
-
   Edge(const Edge &) = delete;
   Edge(Edge &&) = default;
-
-  virtual ~Edge() = default;
 
   void print (raw_ostream &os) const {
     if (arc_expr.empty()) {
@@ -109,17 +106,14 @@ struct Edge : public Printable {
 };
 
 
-struct Place : NetElement {
+struct Place final : NetElement {
   string type;
   string init_expr;
 
   explicit Place(string name, string type, string init_expr)
     : NetElement(name), type(type), init_expr(init_expr) { }
-
   Place(const Place &) = delete;
   Place(Place &&) = default;
-
-  virtual ~Place() = default;
 
   virtual void print (raw_ostream &os) const {
     os << "P(" << id << "): ";
@@ -143,17 +137,14 @@ struct Place : NetElement {
 
 using ConditionList = vector<string>;
 
-struct Transition : NetElement {
+struct Transition final : NetElement {
   string name;
   const ConditionList guard;
 
   explicit Transition(string name, const ConditionList guard)
     : NetElement(name), guard(guard) { }
-
   Transition(const Transition &) = delete;
   Transition(Transition &&) = default;
-
-  virtual ~Transition() = default;
 
   virtual void print (raw_ostream &os) const {
     os << "T(" << id << "): ";

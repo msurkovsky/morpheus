@@ -8,8 +8,10 @@
 #ifndef MRPH_COMM_NET_H
 #define MRPH_COMM_NET_H
 
+#include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/IR/CallSite.h"
+#include "llvm/IR/CFG.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include "morpheus/Utils.hpp"
@@ -861,6 +863,175 @@ private:
 
   Place *entry_p_;
   Place *exit_p_;
+};
+
+
+// =============================================================================
+// BasicBlockCN
+
+struct BasicBlockCN final : public PluginCNBase {
+
+  const BasicBlock &bb;
+
+  ~BasicBlockCN() = default;
+
+  BasicBlockCN(const BasicBlock &bb) : bb(bb) {
+
+    string str;
+    raw_string_ostream rso(str);
+    bb.printAsOperand(rso, false);
+    string bb_name = " " + rso.str();
+
+    entry_place().name += bb_name;
+    exit_place().name += bb_name;
+  }
+
+  BasicBlockCN(const BasicBlockCN &) = delete;
+  BasicBlockCN(BasicBlockCN &&) = default;
+
+  void connect(AddressableCN &acn) override {
+    // connect all the stored pcns separately
+    for (PluginCNGeneric &pcn : stored_pcns_) {
+      pcn.connect(acn);
+    }
+  }
+
+  void inject_into(AddressableCN &acn) && { // TODO: maybe template it to work with both ACN and PCN
+    connect(acn);
+    for (PluginCNGeneric &pcn : stored_pcns_) {
+      // NOTE: all the connections has already been done, hence `acn`
+      //       only takeover the elements of `pcn`. In other words,
+      //       `pcn` renounces its elements in favor of the `acn`.
+      move(pcn).renounce_in_favor_of(acn);
+    }
+    acn.takeover(move(*this));
+  }
+
+  void add_pcn(PluginCNGeneric pcn) {
+    // join newly added pcn
+    add_cf_edge(entry_place(), pcn.entry_place());
+
+    // move the entry point to the exit point of added pcn
+    set_entry(pcn.exit_place());
+
+    // store the pcn
+    stored_pcns_.push_back(move(pcn));
+  }
+
+  void enclose() {
+    // enclose the basic block CN by joining entry and exit places
+    add_cf_edge(entry_place(), exit_place());
+  }
+
+private:
+  vector<PluginCNGeneric> stored_pcns_;
+};
+
+
+// =============================================================================
+// CFG_CN
+
+struct CFG_CN final : public PluginCNBase {
+
+  const Function &fn;
+  vector<BasicBlockCN> bb_cns;
+
+  ~CFG_CN() = default;
+
+  CFG_CN(const Function &fn) : fn(fn) {
+    string str;
+    raw_string_ostream rso(str);
+    fn.printAsOperand(rso, false);
+    string fn_name = " " + rso.str();
+
+    entry_place().name += fn_name;
+    exit_place().name += fn_name;
+
+    // create the basic structure
+    auto bfs_it = breadth_first(&fn);
+    transform(bfs_it.begin(), bfs_it.end(),
+              back_inserter(bb_cns),
+              [] (const BasicBlock *bb) { return cn::BasicBlockCN(*bb); });
+
+    interconnect_basicblock_cns();
+  }
+
+  CFG_CN(const CFG_CN &) = delete;
+  CFG_CN(CFG_CN &&) = default;
+
+  void connect (AddressableCN &acn) {
+    // connection is done within injections of particular BasicBlockCNs
+    errs() << "who is calling connect?\n";
+  }
+
+  void inject_into(AddressableCN &acn) && {
+    for (BasicBlockCN &bbcn : bb_cns) {
+      move(bbcn).inject_into(acn);
+    }
+
+    add_cf_edge(acn.entry_place(), entry_place());
+
+    acn.set_entry(exit_place());
+
+    acn.takeover(move(*this));
+  }
+
+private:
+  void interconnect_basicblock_cns() {
+    // TODO: think about a bit more optimal solution
+
+    for (BasicBlockCN &bbcn : bb_cns) {
+      const BasicBlock *bb = &bbcn.bb;
+
+      for (const BasicBlock *pred_bb : predecessors(bb)) {
+        std::for_each(bb_cns.begin(),
+                      bb_cns.end(),
+                      [pred_bb, &bbcn] (BasicBlockCN &bbcn_) {
+                        if (pred_bb == &bbcn_.bb) {
+                          bbcn_.add_cf_edge(bbcn_.exit_place(), bbcn.entry_place());
+                        }
+                      });
+      }
+    }
+
+    // join the inner structure to entry and exit places
+    add_cf_edge(entry_place(), get_entry_bb().entry_place());
+
+    for (BasicBlockCN *exit_cn : get_exit_bbs()) {
+      add_cf_edge(exit_cn->exit_place(), exit_place());
+    }
+  }
+
+  BasicBlockCN& get_entry_bb() {
+    // as the basic blocks are stored in bfs manner, the first one is the entry one.
+    BasicBlockCN& entry_bb = bb_cns.front();
+    auto it = predecessors(&entry_bb.bb);
+    assert(it.begin() == it.end() && "Entry basic block cannot have predecessor!");
+    return entry_bb;
+  }
+
+  vector<BasicBlockCN*> get_exit_bbs() {
+    // there can be more than one exit blocks
+    vector<BasicBlockCN*> exit_bbs;
+
+    auto i = bb_cns.begin();
+    auto end = bb_cns.end();
+    while (i != end) {
+      i = find_if(i, end,
+                  [] (const BasicBlockCN &bbcn) {
+                    auto it = successors(&bbcn.bb);
+                    // return true only when no successor of the inner basic block
+                    return it.begin() == it.end();
+                  });
+
+      if (i != end) {
+        exit_bbs.push_back(&*i);
+        i++;
+      }
+    }
+
+    return exit_bbs;
+  }
 };
 
 } // end of anonymous namespace

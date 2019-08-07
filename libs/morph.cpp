@@ -4,6 +4,7 @@
 #include "llvm/Analysis/ModuleSummaryAnalysis.h"
 
 #include "morpheus/Transforms/MPISubstituteRank.hpp"
+#include "morpheus/Transforms/GenerateMPNet.hpp"
 
 using namespace llvm;
 
@@ -23,6 +24,12 @@ llvmGetPassPluginInfo() {
             MPM.addPass(RequireAnalysisPass<CallGraphAnalysis, Module>());
             MPM.addPass(RequireAnalysisPass<ModuleSummaryIndexAnalysis, Module>());
             MPM.addPass(MPISubstituteRankPass());
+          }
+
+          if (PassName.startswith("generate-mpn")) {
+            MPM.addPass(RequireAnalysisPass<CallGraphAnalysis, Module>());
+            MPM.addPass(RequireAnalysisPass<ModuleSummaryIndexAnalysis, Module>());
+            MPM.addPass(GenerateMPNetPass());
           }
           return true;
         }

@@ -1,5 +1,6 @@
 add_library(MPIRelTransforms SHARED
   MPISubstituteRank.cpp
+  GenerateMPNet.cpp
   )
 
 target_include_directories (MPIRelTransforms PRIVATE ${MORPHEUS_INCLUDES})

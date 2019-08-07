@@ -29,7 +29,7 @@ struct EmptyCN final : public PluginCNBase {
   EmptyCN(const EmptyCN &) = delete;
   EmptyCN(EmptyCN &&) = default;
 
-  void connect(const AddressableCN &) {
+  void connect(AddressableCN &) {
     // no connection
   }
 
@@ -93,7 +93,7 @@ struct CN_MPI_Isend : public PluginCNBase {
   CN_MPI_Isend(const CN_MPI_Isend &) = delete;
   CN_MPI_Isend(CN_MPI_Isend &&) = default;
 
-  virtual void connect(const AddressableCN &acn) {
+  virtual void connect(AddressableCN &acn) {
     add_output_edge(send, acn.asr, "{data=" + compute_data_buffer_value(*datatype, *size)
                     + ", envelope=" + compute_msg_rqst_value(nullptr, dest, *tag, "buffered") + "}");
   }
@@ -160,7 +160,7 @@ struct CN_MPI_Irecv : public PluginCNBase {
   CN_MPI_Irecv(const CN_MPI_Irecv &) = delete;
   CN_MPI_Irecv(CN_MPI_Irecv &&) = default;
 
-  virtual void connect(const AddressableCN &acn) {
+  virtual void connect(AddressableCN &acn) {
     add_output_edge(recv, acn.arr, compute_msg_rqst_value(source, nullptr, *tag, "false"));
   }
 
@@ -196,7 +196,7 @@ struct CN_MPI_Wait : public PluginCNBase {
   CN_MPI_Wait(const CN_MPI_Wait &) = delete;
   CN_MPI_Wait(CN_MPI_Wait &&) = default;
 
-  virtual void connect(const AddressableCN &acn) {
+  virtual void connect(AddressableCN &acn) {
     add_input_edge(acn.csr /* TODO: choose according to type */, wait, "TODO:", SHUFFLE);
   }
 };
@@ -222,7 +222,7 @@ struct CN_MPI_Send final : public PluginCNBase {
   CN_MPI_Send(CN_MPI_Send &&) = default;
 
 
-  void connect(const AddressableCN &acn) {
+  void connect(AddressableCN &acn) {
     cn_isend.connect(acn);
     add_input_edge(acn.csr, t_wait, "[buffered] {data=data, envelope={id=id}}", SHUFFLE);
   }
@@ -265,7 +265,7 @@ struct CN_MPI_Recv final : public PluginCNBase {
   CN_MPI_Recv(const CN_MPI_Recv &) = delete;
   CN_MPI_Recv(CN_MPI_Recv &&) = default;
 
-  void connect (const AddressableCN &acn) {
+  void connect (AddressableCN &acn) {
     cn_irecv.connect(acn);
     add_input_edge(acn.crr, t_wait, "{data=data, envelope={id=id}}", SHUFFLE);
   }

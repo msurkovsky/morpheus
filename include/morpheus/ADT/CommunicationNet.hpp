@@ -805,7 +805,7 @@ public:
   PluginCNBase(const PluginCNBase &) = delete;
   PluginCNBase(PluginCNBase &&) = default;
 
-  virtual void connect(const AddressableCN &acn) = 0;
+  virtual void connect(AddressableCN &acn) = 0;
 
   template <typename PluggableCN>
   void inject_into(PluggableCN &) & {

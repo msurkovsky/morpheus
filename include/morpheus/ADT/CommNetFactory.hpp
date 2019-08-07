@@ -23,54 +23,10 @@ public:
   EmptyCommNet(EmptyCommNet &&) = default;
 };
 
-class BaseSendRecv : public PluginCommNet {
 
-protected:
 
-  // partial elements
-  std::string msg_rqst;
-
-  // full elements
-  std::string setting_type;
-  std::string from_setting_ae;
-  std::string data_type;
-  std::string from_data_ae;
-
-  void compute_setting_info(Value const *src,
-                            Value const *dest,
-                            Value const *tag,
-                            std::string buffered) {
-
-    using namespace std::placeholders;
-    auto store_non_empty = std::bind(store_if_not<std::string>, _1, _2, "");
-
-    std::vector<std::string> types, names;
-    std::string src_val, dest_val, tag_val;
-    // determine str, dest, val if not null
-    if (src) {
-      store_non_empty(types, value_to_type(*src, false));
-      store_non_empty(names, value_to_str(*src, "src", false));
-      src_val = value_to_str(*src, "src");
-    }
-    if (dest) {
-      store_non_empty(types, value_to_type(*dest, false));
-      store_non_empty(names, value_to_str(*dest, "dest", false));
-      dest_val = value_to_str(*dest, "dest");
-    }
-    assert (tag != nullptr && "Expected not null tag value.");
-    store_non_empty(types, value_to_type(*tag, false));
-    store_non_empty(names, value_to_str(*tag, "tag", false));
-    tag_val = value_to_str(*tag, "tag");
-
-    setting_type = pp_vector(types, ", ", "(", ")");
-    from_setting_ae = pp_vector(names, ", ", "(", ")");
-
-    msg_rqst = generate_message_request(src_val, dest_val, tag_val, buffered);
   }
 
-  void compute_data_buffer_info(const Value &type) {
-    data_type = "DataPacket";
-    from_data_ae = "data";
   }
 
 };

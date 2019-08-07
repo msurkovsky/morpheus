@@ -123,6 +123,30 @@ public:
   }
 };
 
+class CN_MPI_Wait : public BaseSendRecv {
+
+  // MPI_Wait(
+  //   MPI_Request *request // INOUT
+  //   MPI_Status *status   // OUT
+  // )
+
+  std::string name_prefix;
+  Transition &wait;
+
+public:
+  CN_MPI_Wait(const CallSite &cs)
+    : name_prefix("wait" + std::to_string(get_id())),
+      wait(add_transition({}, name_prefix)) { }
+
+  virtual void connect_csr(const Place &p) {
+    // TODO: add input arcs according to the request type
+  }
+
+  virtual void connect_crr(const Place &p) {
+    // TODO: add input arcs according to the request type
+  }
+};
+
 struct CommNetFactory {
 
   static std::unique_ptr<PluginCommNet> createCommNet(const CallSite &cs) {

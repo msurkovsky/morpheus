@@ -8,6 +8,7 @@
 #ifndef MRPH_COMM_NET_H
 #define MRPH_COMM_NET_H
 
+#include "llvm/ADT/iterator_range.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -160,12 +161,22 @@ struct Transition : Element {
 // ==============================================================================
 
 class CommunicationNet : public Printable {
-  vector<unique_ptr<Place>> places;
-  vector<unique_ptr<Transition>> transitions;
+public:
+  using places_iterator = vector<unique_ptr<Place>>::iterator;
+  using transitions_iterator = vector<unique_ptr<Transition>>::iterator;
+  using edges_iterator = vector<unique_ptr<Edge>>::iterator;
 
-  vector<unique_ptr<Edge>> input_edges;
-  vector<unique_ptr<Edge>> output_edges;
-  vector<unique_ptr<Edge>> control_flow_edges;
+  using const_places_iterator = vector<unique_ptr<Place>>::const_iterator;
+  using const_transitions_iterator = vector<unique_ptr<Transition>>::const_iterator;
+  using const_edges_iterator = vector<unique_ptr<Edge>>::const_iterator;
+
+private:
+  vector<unique_ptr<Place>> place_list;
+  vector<unique_ptr<Transition>> transition_list;
+
+  vector<unique_ptr<Edge>> input_edge_list;
+  vector<unique_ptr<Edge>> output_edge_list;
+  vector<unique_ptr<Edge>> control_flow_edge_list;
 
 public:
   CommunicationNet() = default;
@@ -173,51 +184,139 @@ public:
   CommunicationNet(CommunicationNet &&) = default;
 
   Place &add_place(string type, string init_expr, string name="") {
-    places.push_back(std::make_unique<Place>(name, type, init_expr));
-    return *places.back();
+    place_list.push_back(std::make_unique<Place>(name, type, init_expr));
+    return *place_list.back();
   }
 
   Transition &add_transition(ConditionList cl, string name="") {
-    transitions.push_back(std::make_unique<Transition>(name, cl));
-    return *transitions.back();
+    transition_list.push_back(std::make_unique<Transition>(name, cl));
+    return *transition_list.back();
   }
 
   Edge &add_input_edge(const Place &src, const Transition &dest, EdgeType type=TAKE, std::string ae="") {
-    input_edges.push_back(std::make_unique<Edge>(src, dest, type, ae));
-    return *input_edges.back();
+    input_edge_list.push_back(std::make_unique<Edge>(src, dest, type, ae));
+    return *input_edge_list.back();
   }
 
   Edge &add_output_edge(const Transition &src, const Place &dest, std::string ae="") {
-    output_edges.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
-    return *output_edges.back();
+    output_edge_list.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
+    return *output_edge_list.back();
   }
 
   template<typename Startpoint, typename Endpoint>
   Edge const &add_cf_edge(const Startpoint& src, const Endpoint& dest, std::string ae="") {
-    control_flow_edges.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
-    return *control_flow_edges.back();
+    control_flow_edge_list.push_back(std::make_unique<Edge>(src, dest, TAKE, ae));
+    return *control_flow_edge_list.back();
+  }
+
+  places_iterator       places_begin()       { return place_list.begin(); }
+  const_places_iterator places_begin() const { return place_list.begin(); }
+  places_iterator       places_end()         { return place_list.end(); }
+  const_places_iterator places_end()   const { return place_list.end(); }
+  bool                  places_empty() const { return place_list.empty(); }
+
+  iterator_range<places_iterator> places() {
+    return make_range(places_begin(), places_end());
+  }
+
+  iterator_range<const_places_iterator> places() const {
+    return make_range(places_begin(), places_end());
+  }
+
+
+  transitions_iterator       transitions_begin()       { return transition_list.begin(); }
+  const_transitions_iterator transitions_begin() const { return transition_list.begin(); }
+  transitions_iterator       transitions_end()         { return transition_list.end(); }
+  const_transitions_iterator transitions_end()   const { return transition_list.end(); }
+  bool                        transitions_empty() const { return transition_list.empty(); }
+
+  iterator_range<transitions_iterator> transitions() {
+    return make_range(transitions_begin(), transitions_end());
+  }
+
+  iterator_range<const_transitions_iterator> transitions() const {
+    return make_range(transitions_begin(), transitions_end());
+  }
+
+
+  edges_iterator       iedges_begin()       { return input_edge_list.begin(); }
+  const_edges_iterator iedges_begin() const { return input_edge_list.begin(); }
+  edges_iterator       iedges_end()         { return input_edge_list.end(); }
+  const_edges_iterator iedges_end()   const { return input_edge_list.end(); }
+  bool                 iedges_empty() const { return input_edge_list.empty(); }
+
+  iterator_range<edges_iterator> input_edges() {
+    return make_range(iedges_begin(), iedges_end());
+  }
+
+  iterator_range<const_edges_iterator> input_edges() const {
+    return make_range(iedges_begin(), iedges_end());
+  }
+
+
+  edges_iterator       oedges_begin()       { return output_edge_list.begin(); }
+  const_edges_iterator oedges_begin() const { return output_edge_list.begin(); }
+  edges_iterator       oedges_end()         { return output_edge_list.end(); }
+  const_edges_iterator oedges_end()   const { return output_edge_list.end(); }
+  bool                 oedges_empty() const { return output_edge_list.empty(); }
+
+  iterator_range<edges_iterator> output_edges() {
+    return make_range(oedges_begin(), oedges_end());
+  }
+
+  iterator_range<const_edges_iterator> output_edges() const {
+    return make_range(oedges_begin(), oedges_end());
+  }
+
+
+  edges_iterator       cfedges_begin()       { return control_flow_edge_list.begin(); }
+  const_edges_iterator cfedges_begin() const { return control_flow_edge_list.begin(); }
+  edges_iterator       cfedges_end()         { return control_flow_edge_list.end(); }
+  const_edges_iterator cfedges_end()   const { return control_flow_edge_list.end(); }
+  bool                 cfedges_empty() const { return control_flow_edge_list.empty(); }
+
+  iterator_range<edges_iterator> control_flow_edges() {
+    return make_range(cfedges_begin(), cfedges_end());
+  }
+
+  iterator_range<const_edges_iterator> control_flow_edges() const {
+    return make_range(cfedges_begin(), cfedges_end());
   }
 
   virtual void print (raw_ostream &os) const {
-    os << "Places:\n";
-    for (auto &p : places) {
-      os << "  " << *p << "\n";
+    if (!places_empty()) {
+      os << "Places:\n";
+      for (auto &p : places()) {
+        os << "  " << *p << "\n";
+      }
     }
-    os << "Transitions:\n";
-    for (auto &t : transitions) {
-      os << "  " << *t << "\n";
+
+    if (!transitions_empty()) {
+      os << "Transitions:\n";
+      for (auto &t : transitions()) {
+        os << "  " << *t << "\n";
+      }
     }
-    os << "Input edges:\n";
-    for (auto &e : input_edges) {
-      os << "  " << *e << "\n";
+
+    if (!iedges_empty()) {
+      os << "Input edges:\n";
+      for (auto &e : input_edges()) {
+        os << "  " << *e << "\n";
+      }
     }
-    os << "Outuput edges:\n";
-    for (auto &e : output_edges) {
-      os << "  " << *e << "\n";
+
+    if (!oedges_empty()) {
+      os << "Outuput edges:\n";
+      for (auto &e : output_edges()) {
+        os << "  " << *e << "\n";
+      }
     }
-    os << "CF edges:\n";
-    for (auto &e : control_flow_edges) {
-      os << "  " << *e << "\n";
+
+    if (!cfedges_empty()) {
+      os << "CF edges:\n";
+      for (auto &e : control_flow_edges()) {
+        os << "  " << *e << "\n";
+      }
     }
   }
 };
@@ -234,18 +333,42 @@ private:
     return ++_id;
   }
 
+  Place *entry_p;
+  Place *exit_p;
+
 public:
   PluginCommNet() : id(generate_id()) { }
   PluginCommNet(const PluginCommNet &) = delete;
   PluginCommNet(PluginCommNet &&) = default;
 
+  virtual Place &entry_place() = 0;
+  virtual Place &exit_place() = 0;
+
   ID get_id() {
     return id;
   }
 
-  virtual Place &entry_place() = 0;
-  virtual Place &exit_place() = 0;
-  // virtual std::vector<Place *> unprocessed_places();
+  Place *entry_place() {
+    return entry_p;
+  };
+
+  Place *exit_place() {
+    return exit_p;
+  };
+
+  void set_entry_place(Place *p) {
+    entry_p = p;
+  }
+
+  void set_exit_place(Place *p) {
+    exit_p = p;
+  }
+
+  virtual void print(raw_ostream &os) const {
+    CommunicationNet::print(os);
+
+    }
+  }
 
 protected:
   std::string value_to_type(const Value &v, bool return_constant=true) {

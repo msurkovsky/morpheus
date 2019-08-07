@@ -224,12 +224,21 @@ class PluginCommNet : public CommunicationNet {
 public:
   using ID = unsigned int;
 
-protected:
+private:
+  const ID id;
   static ID generate_id() {
-    static ID id = 0;
-    return ++id;
+    static ID _id = 0;
+    return ++_id;
   }
 
+public:
+  PluginCommNet() : id(generate_id()) { }
+  PluginCommNet(const PluginCommNet &) = delete;
+  PluginCommNet(PluginCommNet &&) = default;
+
+  ID get_id() {
+    return id;
+  }
   std::string value_to_type(const Value &v) {
     if (isa<Constant>(v)) {
       // NOTE: for constant value the type is represented by empty string

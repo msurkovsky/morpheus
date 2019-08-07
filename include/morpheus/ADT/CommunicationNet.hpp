@@ -705,6 +705,10 @@ public:
   // ---------------------------------------------------------------------------
   // accessible methods of PluggableCNs
 
+  void connect(AddressableCN &acn) {
+    self_->connect_(acn);
+  }
+
   template <typename PluggableCN>
   void inject_into(PluggableCN &pcn) {
     move(self_)->inject_into_(pcn);
@@ -735,6 +739,7 @@ private:
     virtual ~pluggable_t() = default;
 
     virtual void takeover_(CommunicationNet cn) = 0;
+    virtual void connect_(AddressableCN &) = 0;
     virtual void inject_into_(AddressableCN &) = 0;
     virtual void inject_into_(PluginCNGeneric &) = 0;
     virtual void add_cf_edge_(NetElement &src, NetElement &dest) = 0;
@@ -751,6 +756,10 @@ private:
 
     void takeover_(CommunicationNet cn) override {
       pcn_.takeover(move(cn));
+    }
+
+    void connect_(AddressableCN &acn) override {
+      pcn_.connect(acn);
     }
 
     void inject_into_(AddressableCN &acn) override {

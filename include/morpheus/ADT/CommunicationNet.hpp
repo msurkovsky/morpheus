@@ -341,14 +341,64 @@ private:
   Elements<Edge> cf_edges_;
 };
 
-class PluginCommNet : public CommunicationNet {
+// =============================================================================
+// Addressable CN
 
-public:
-  using ID = unsigned int;
+struct AddressableCN final : public CommunicationNet {
+
+  using Address = unsigned int;
+
+  const Address address;
+  const Place &asr;
+  const Place &arr;
+  const Place &csr;
+  const Place &crr;
+
+  ~AddressableCN() = default;
+
+  AddressableCN(Address address)
+    : address(address),
+      asr(add_place("MessageToken", "", "Active Send Request")),
+      arr(add_place("MessageRequest", "", "Active Receive Request")),
+      csr(add_place("MessageRequest", "", "Completed Send Request")),
+      crr(add_place("MessageToken", "", "Completed Receive Request")),
+      entry_p_(&add_place("Unit", "", "Entry" + id)),
+      exit_p_(&add_place("Unit", "", "Exit" + id)) { }
+
+  AddressableCN(const AddressableCN &) = delete;
+  AddressableCN(AddressableCN &&) = default;
+
+  void print (raw_ostream &os) const {
+    os << "Adress: " << address << "\n";
+    os << "------------------------------------------------------------\n";
+    CommunicationNet::print(os);
+    os << "------------------------------------------------------------\n\n";
+  }
+
+  // ---------------------------------------------------------------------------
+  // AddressableCN follows the interface of PluginCN in the sense that it has
+  // also entry and exit places. But cannot be injected!
+
+  Place& entry_place() {
+    return *entry_p_;
+  }
+
+  Place& exit_place() {
+    return *exit_p_;
+  }
+
+  void set_entry(Place *p) {
+    entry_p_ = p;
+  }
+
+  void set_exit(Place *p) {
+    exit_p_ = p;
+  }
 
 private:
-  Place *entry_p;
-  Place *exit_p;
+  Place *entry_p_;
+  Place *exit_p_;
+};
 
 public:
   PluginCommNet()

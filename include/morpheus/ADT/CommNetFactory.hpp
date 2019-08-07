@@ -124,17 +124,21 @@ struct CN_MPI_Wait : public PluginCNBase {
   }
 };
 
-struct CommNetFactory {
 
-  static std::unique_ptr<PluginCommNet> createCommNet(const CallSite &cs) {
+// ===========================================================================
+// CNs factory
+
+struct CNFactory {
+
+  static PluginCNGeneric createCommSubnet(const CallSite &cs) {
     Function *f = cs.getCalledFunction();
-    assert (f->hasName() && "The CommNetFactory expects call site with a named function");
+    assert (f->hasName() && "The CNFactory expects call site with a named function");
 
     StringRef call_name = f->getName();
     if (call_name == "MPI_Isend" || call_name == "MPI_Send" /* TODO: remove MPI_Send */) {
-      return std::make_unique<CN_MPI_Isend>(cs);
+      return CN_MPI_Isend(cs);
     }
-    return std::make_unique<EmptyCommNet>();
+    return EmptyCN();
   }
 };
 

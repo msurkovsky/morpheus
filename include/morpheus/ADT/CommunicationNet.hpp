@@ -921,17 +921,19 @@ struct BasicBlockCN final : public PluginCNBase {
     }
   }
 
-  void inject_into(AddressableCN &acn) && { // TODO: maybe template it to work with both ACN and PCN
-    connect(acn);
-    for (PluginCNGeneric &pcn : stored_pcns_) {
-      // NOTE: all the connections has already been done, hence `acn`
-      //       only takeover the elements of `pcn`. In other words,
-      //       `pcn` renounces its elements in favor of the `acn`.
-      move(pcn).renounce_in_favor_of(acn);
-    }
-    acn.takeover(move(*this));
+  // NOTE: redefine injection function to call a different (local) `plug_in_` method.
+  void inject_into(PluginCNGeneric &pcn) && {
+    plug_in_(pcn);
   }
 
+  void inject_into(AddressableCN &acn) && {
+    connect(acn);
+    plug_in_(acn);
+  }
+
+  // NOTE: As the BasicBlockCN is only an envelope for inner CNs
+  //       it needs to keep them separate. Therefore these are added only,
+  //       and not injected directly.
   void add_pcn(PluginCNGeneric pcn) {
     // join newly added pcn
     add_cf_edge(entry_place(), pcn.entry_place());
@@ -942,8 +944,22 @@ struct BasicBlockCN final : public PluginCNBase {
     // store the pcn
     stored_pcns_.push_back(move(pcn));
   }
-
 private:
+  template <typename PluggableCN>
+  void plug_in_(PluggableCN &pcn) {
+    for (PluginCNGeneric &stored_pcn : stored_pcns_) {
+      // NOTE: all the connections has already been done, hence `acn`
+      //       only takeover the elements of `pcn`. In other words,
+      //       `pcn` renounces its elements in favor of the `acn`.
+
+      move(stored_pcn).renounce_in_favor_of(pcn);
+      // NOTE: it is the same as: `pcn.takeover(move(stored_pcn))`
+      //       that is not directly supported with PluginCNGeneric
+      //       as the actual CN is hidden inside.
+    }
+    pcn.takeover(move(*this));
+  }
+
   vector<PluginCNGeneric> stored_pcns_;
 };
 

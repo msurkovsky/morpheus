@@ -665,6 +665,11 @@ struct AddressableCN final : public CommunicationNet {
   void set_entry(Place &p) { entry_p_ = &p; }
   void set_exit(Place &p) { exit_p_ = &p; }
 
+  void enclose() {
+    // enclose the CN by connecting its entry & exit places
+    add_cf_edge(entry_place(), exit_place());
+  }
+
 private:
   // override the protected methods to work correctly within the context of addressable CN
   bool remove(Place &p) override {
@@ -736,6 +741,8 @@ public:
   void set_entry(Place &p) { self_->set_entry_(p); }
   void set_exit(Place &p) { self_->set_exit_(p); }
 
+  void enclose() {self_->enclose_(); }
+
   void print(ostream &os, const formats::Formatter &fmt) const {
     self_->print_(os, fmt);
   }
@@ -757,6 +764,7 @@ private:
     virtual Place& exit_place_() = 0;
     virtual void set_entry_(Place &) = 0;
     virtual void set_exit_(Place &) = 0;
+    virtual void enclose_() = 0;
     virtual void print_(ostream &os, const formats::Formatter &fmt) const = 0;
   };
 
@@ -804,6 +812,10 @@ private:
       pcn_.set_exit(p);
     }
 
+    void enclose_() override {
+      pcn_.enclose();
+    }
+
     void print_(ostream &os, const formats::Formatter &fmt) const override {
       pcn_.print(os, fmt);
     }
@@ -849,6 +861,11 @@ public:
 
   void set_entry(Place &p) { entry_p_ = &p; }
   void set_exit(Place &p) { exit_p_ = &p; }
+
+  void enclose() {
+    // enclose the CN by connecting its entry & exit places
+    add_cf_edge(entry_place(), exit_place());
+  }
 
 private:
   template <typename PluggableCN>
@@ -918,11 +935,6 @@ struct BasicBlockCN final : public PluginCNBase {
 
     // store the pcn
     stored_pcns_.push_back(move(pcn));
-  }
-
-  void enclose() {
-    // enclose the basic block CN by joining entry and exit places
-    add_cf_edge(entry_place(), exit_place());
   }
 
 private:

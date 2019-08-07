@@ -13,20 +13,22 @@
 namespace {
 using namespace llvm;
 
-class EmptyCommNet : public PluginCommNet {
+// ------------------------------------------------------------------------------
+// EmptyCN
+
+struct EmptyCN final : public PluginCNBase {
 
 public:
-  EmptyCommNet() {
+  ~EmptyCN() = default;
+
+  EmptyCN() {
     add_cf_edge(entry_place(), exit_place());
   }
-  EmptyCommNet(const EmptyCommNet &) = delete;
-  EmptyCommNet(EmptyCommNet &&) = default;
-};
+  EmptyCN(const EmptyCN &) = delete;
+  EmptyCN(EmptyCN &&) = default;
 
-
-
-  }
-
+  void connect(const AddressableCN &) {
+    // no connection
   }
 
 };

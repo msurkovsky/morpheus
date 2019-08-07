@@ -9,7 +9,6 @@
 #include "morpheus/ADT/CommunicationNet.hpp"
 
 #include <functional>
-#include <sstream>
 
 namespace {
 using namespace llvm;
@@ -17,33 +16,52 @@ using namespace llvm;
 class BaseSendRecv : public PluginCommNet {
 
 protected:
+
+  // partial elements
+  std::string msg_rqst;
+
+  // full elements
   std::string setting_type;
-  std::string setting_arc_expr;
-  std::string data_arc_expr;
-  void compute_setting(const Value &src,
-                       const Value &dest,
-                       const Value &tag) {
+  std::string from_setting_ae;
+  std::string data_type;
+  std::string from_data_ae;
+
+  void compute_setting_info(Value const *src,
+                            Value const *dest,
+                            Value const *tag,
+                            std::string buffered) {
 
     using namespace std::placeholders;
-    auto store = std::bind(store_if_not<std::string>, _1, _2, "");
+    auto store_non_empty = std::bind(store_if_not<std::string>, _1, _2, "");
 
-    std::vector<std::string> types;
-    store(types, value_to_type(src));
-    store(types, value_to_type(dest));
-    store(types, value_to_type(tag));
-    setting_type = format_tuple(types);
+    std::vector<std::string> types, names;
+    std::string src_val, dest_val, tag_val;
+    // determine str, dest, val if not null
+    if (src) {
+      store_non_empty(types, value_to_type(*src, false));
+      store_non_empty(names, value_to_str(*src, "src", false));
+      src_val = value_to_str(*src, "src");
+    }
+    if (dest) {
+      store_non_empty(types, value_to_type(*dest, false));
+      store_non_empty(names, value_to_str(*dest, "dest", false));
+      dest_val = value_to_str(*dest, "dest");
+    }
+    assert (tag != nullptr && "Expected not null tag value.");
+    store_non_empty(types, value_to_type(*tag, false));
+    store_non_empty(names, value_to_str(*tag, "tag", false));
+    tag_val = value_to_str(*tag, "tag");
 
-    std::vector<std::string> names;
-    store(names, value_to_str(src, "src", false));
-    store(names, value_to_str(dest, "dest", false));
-    store(names, value_to_str(tag, "tag", false));
-    setting_arc_expr = format_tuple(names);
-    errs() << "setting arc expr:  " << setting_arc_expr << "\n";
+    setting_type = pp_vector(types, ", ", "(", ")");
+    from_setting_ae = pp_vector(names, ", ", "(", ")");
 
-    // TODO: generator for  MessageRequest
+    msg_rqst = generate_message_request(src_val, dest_val, tag_val, buffered);
   }
 
-private:
+  void compute_data_buffer_info(const Value &type) {
+    data_type = "DataPacket";
+    from_data_ae = "data";
+  }
 
 };
 
@@ -58,7 +76,6 @@ class CN_MPI_Isend : public BaseSendRecv {
   //   MPI_Comm comm           // THIS IS IGNORED AND IT IS SUPPOSED TO BE MPI_COMM_WORLD
   // );
 
-  const ID id;
   std::string name_prefix;
   Place &send_setting; // INPUT
   Place &send_data;    // INPUT
@@ -67,24 +84,24 @@ class CN_MPI_Isend : public BaseSendRecv {
 
 public:
 
-  CN_MPI_Isend(const CallSite &cs/* TODO: , const Value &rank */)
-    : id(generate_id()),
-      name_prefix("send" + std::to_string(id)),
+  CN_MPI_Isend(const CallSite &cs)
+    : name_prefix("send" + std::to_string(get_id())),
       send_setting(*add_place("<empty>", "", name_prefix + "_setting")),
       send_data(*add_place("<empty>", "", name_prefix + "_data")),
       send_reqst(*add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
       send(*add_transition({}, name_prefix)) {
 
+    Value *datatype = cs.getArgument(2);
+    compute_data_buffer_info(*datatype);
+    send_data.type = data_type;
+
     Value *dest = cs.getArgument(3);
     Value *tag = cs.getArgument(4);
-    compute_setting(*dest /* TODO: pass rank */, *dest, *tag);
+    compute_setting_info(nullptr, dest, tag, "buffered");
     send_setting.type = setting_type;
 
-  }
-
-  // provide the ID back to generator and create an annotation for the corresponding instruction
-  ID get_id() {
-    return id;
+    add_input_edge(send_data, send, TAKE, from_data_ae);
+    add_input_edge(send_setting, send, TAKE, from_setting_ae);
   }
 };
 

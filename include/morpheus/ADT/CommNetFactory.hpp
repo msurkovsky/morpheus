@@ -33,7 +33,11 @@ public:
 
 };
 
-class CN_MPI_Isend : public BaseSendRecv {
+
+// ------------------------------------------------------------------------------
+// CN_MPI_Isend
+
+struct CN_MPI_Isend : public PluginCNBase {
 
   // MPI_Isend(
   //   const void* buf,        // data set to 'send_data' -- this is done within the corresponding annotation
@@ -45,41 +49,57 @@ class CN_MPI_Isend : public BaseSendRecv {
   // );
 
   std::string name_prefix;
-  Place &send_setting; // INPUT
-  Place &send_data;    // INPUT
+  Place &send_params;  // INPUT
   Place &send_reqst;   // OUTPUT
   Place &send_exit;    // unit exit place
   Transition &send;
 
-public:
+  virtual ~CN_MPI_Isend() = default;
+
   CN_MPI_Isend(const CallSite &cs)
     : name_prefix("send" + id),
-      send_setting(add_place("<empty>", "", name_prefix + "_setting")),
-      send_data(add_place("<empty>", "", name_prefix + "_data")),
+      send_params(add_place("<empty>", "", name_prefix + "_params")),
       send_reqst(add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
       send_exit(add_place("Unit", "", name_prefix + "_exit")),
       send(add_transition({}, name_prefix)) {
 
-    Value *datatype = cs.getArgument(2);
-    compute_data_buffer_info(*datatype);
-    send_data.type = data_type;
+    size = cs.getArgument(1);
+    datatype = cs.getArgument(2);
+    dest = cs.getArgument(3);
+    tag = cs.getArgument(4);
 
-    Value *dest = cs.getArgument(3);
-    Value *tag = cs.getArgument(4);
-    compute_setting_info(nullptr, dest, tag, "buffered");
-    send_setting.type = setting_type;
+    send_params.type = "(" +
+      compute_data_buffer_type(*datatype) + "," +
+      compute_envelope_type(nullptr, dest, *tag) + ")";
 
-    add_input_edge(send_data, send, TAKE, from_data_ae);
-    add_input_edge(send_setting, send, TAKE, from_setting_ae);
+    add_input_edge(send_params, send, TAKE,
+                   "(" + compute_data_buffer_value(*datatype, *size) + ","
+                       + compute_envelope_value(nullptr, dest, *tag, false) + ")");
 
-    add_cf_edge(entry_place(), send_setting);
+    add_cf_edge(entry_place(), send_params);
     add_cf_edge(send_exit, exit_place());
+
+    // TODO: solve unresolved places
   }
 
-  virtual void connect_asr(const Place &p) {
-    add_output_edge(send, p);
+  CN_MPI_Isend(const CN_MPI_Isend &) = delete;
+  CN_MPI_Isend(CN_MPI_Isend &&) = default;
+
+  virtual void connect(const AddressableCN &acn) {
+    add_output_edge(send, acn.asr, "{data=" + compute_data_buffer_value(*datatype, *size)
+                    + ", envelope=" + compute_msg_rqst_value(nullptr, dest, *tag, "buffered") + "}");
   }
+
+private:
+  Value const *size;
+  Value const *datatype;
+  Value const *dest;
+  Value const *tag;
 };
+
+
+// ------------------------------------------------------------------------------
+// CN_MPI_Isend
 
 class CN_MPI_Wait : public BaseSendRecv {
 

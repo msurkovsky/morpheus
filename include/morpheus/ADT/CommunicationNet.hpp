@@ -432,52 +432,7 @@ public:
   virtual void connect_csr(const Place &csr_p) { };
   virtual void connect_crr(const Place &crr_p) { };
 
-protected:
-  std::string value_to_type(const Value &v, bool return_constant=true) {
-    if (isa<Constant>(v) && !return_constant) {
-      // NOTE: for constant value the type is represented by empty string
-      //       because the constants are used directly without need to store them.
-      return "";
-    }
-    std::string type;
-    raw_string_ostream rso(type);
-    rso << *v.getType();
-    return rso.str();
-  }
 
-  std::string value_to_str(const Value &v, string name, bool return_constant=true) {
-    if (Constant const *c = dyn_cast<Constant>(&v)) {
-      if (return_constant) {
-        string value;
-        raw_string_ostream rso(value);
-        v.printAsOperand(rso, false); // print the constant without the type
-        return rso.str();
-      }
-      return "";
-    }
-    // string value;
-    // raw_string_ostream rso(value);
-    // v.printAsOperand(rso, false); // print used operand
-    // return rso.str();
-    return name;
-  }
-
-  std::string generate_message_request(std::string src,
-                                       std::string dest,
-                                       std::string tag,
-                                       std::string buffered,
-                                       std::string delim="") {
-
-    auto prepare_part = [] (std::string name,
-                            const std::string &val) -> std::string {
-      if (val.empty()) {
-        return "";
-      }
-
-      std::ostringstream oss;
-      oss << name << "=" << val;
-      return oss.str();
-    };
 
     using namespace std::placeholders;
     auto store_non_empty = std::bind(store_if_not<std::string>, _1, _2, "");

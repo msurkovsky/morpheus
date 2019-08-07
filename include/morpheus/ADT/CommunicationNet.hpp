@@ -400,124 +400,182 @@ private:
   Place *exit_p_;
 };
 
+
+// =============================================================================
+// Generic Plugin CN
+
+class PluginCNGeneric final : public Printable {
+
 public:
-  PluginCommNet()
-    : entry_p(&add_place("Unit", "", "entry" + id)),
-      exit_p(&add_place("Unit", "", "exit" + id)) { }
+  ~PluginCNGeneric() = default;
 
-  PluginCommNet(const PluginCommNet &) = delete;
-  PluginCommNet(PluginCommNet &&) = default;
+  template <typename PluggableCN>
+  PluginCNGeneric(PluggableCN &&net)
+    : self_(std::make_unique<model<PluggableCN>>(forward<PluggableCN>(net))) { }
 
-  Place &entry_place() {
-    return *entry_p;
-  };
+  PluginCNGeneric(const PluginCNGeneric &) = delete;
+  PluginCNGeneric(PluginCNGeneric &&) = default;
 
-  Place &exit_place() {
-    return *exit_p;
-  };
+  // ---------------------------------------------------------------------------
+  // accessible methods of PluggableCNs
 
-  void set_entry_place(Place *p) {
-    entry_p = p;
+  template <typename PluggableCN>
+  void inject_into(PluggableCN &pcn) {
+    move(self_)->inject_into_(pcn);
+    self_.release();
   }
 
-  void set_exit_place(Place *p) {
-    exit_p = p;
+  void add_cf_edge(const NetElement& src, const NetElement& dest) {
+    self_->add_cf_edge_(src, dest);
   }
 
-  virtual void inject_pluign_cn(std::unique_ptr<PluginCommNet> pcn) {
+  void takeover(CommunicationNet cn) {
+    self_->takeover_(move(cn));
+  }
 
-    // move elements
-    for (auto &p : pcn->places()) {
-      add_place(std::move(p));
+  Place& entry_place() {
+    return self_->entry_place_();
+  }
+
+  Place& exit_place() {
+    return self_->exit_place_();
+  }
+
+  void set_entry(Place *p) {
+    self_->set_entry_(p);
+  }
+
+  void set_exit(Place *p) {
+    self_->set_exit_(p);
+  }
+
+  void print(raw_ostream &os) const {
+    self_->print_(os);
+  }
+
+private:
+  struct pluggable_t { // interface of pluggable CNs
+    virtual ~pluggable_t() = default;
+
+    virtual void takeover_(CommunicationNet cn) = 0;
+    virtual void inject_into_(AddressableCN &) = 0;
+    virtual void inject_into_(PluginCNGeneric &) = 0;
+    virtual void add_cf_edge_(const NetElement &src, const NetElement &dest) = 0;
+    virtual Place& entry_place_() = 0;
+    virtual Place& exit_place_() = 0;
+    virtual void set_entry_(Place *) = 0;
+    virtual void set_exit_(Place *) = 0;
+    virtual void print_(raw_ostream &) const = 0;
+  };
+
+  template <typename PluggableCN>
+  struct model final : pluggable_t {
+    model(PluggableCN &&pcn) : pcn_(forward<PluggableCN>(pcn)) { }
+
+    void takeover_(CommunicationNet cn) override {
+      pcn_.takeover(move(cn));
     }
 
-    for (auto &t : pcn->transitions()) {
-      add_transition(std::move(t));
+    void inject_into_(AddressableCN &acn) override {
+      move(pcn_).inject_into(acn);
     }
 
-    for (auto &ie : pcn->input_edges()) {
-      add_input_edge(std::move(ie));
+    void inject_into_(PluginCNGeneric &pcn) override {
+      move(pcn_).inject_into(pcn);
     }
 
-    for (auto &oe : pcn->output_edges()) {
-      add_output_edge(std::move(oe));
+    void add_cf_edge_(const NetElement &src, const NetElement &dest) override {
+      pcn_.add_cf_edge(src, dest);
     }
 
-    for (auto &cfe : pcn->control_flow_edges()) {
-      add_cf_edge(std::move(cfe));
+    Place& entry_place_() override {
+      return pcn_.entry_place();
     }
 
+    Place& exit_place_() override {
+      return pcn_.exit_place();
+    }
+
+    void set_entry_(Place *p) override {
+      pcn_.set_entry(p);
+    }
+
+    void set_exit_(Place *p) override {
+      pcn_.set_exit(p);
+    }
+
+    void print_(raw_ostream &os) const override {
+      pcn_.print(os);
+    }
+
+    PluggableCN pcn_;
+  };
+
+  unique_ptr<pluggable_t> self_;
+};
+
+
+// =============================================================================
+// Base Plugin CN
+
+class PluginCNBase : public CommunicationNet {
+public:
+  virtual ~PluginCNBase() = default;
+
+  PluginCNBase()
+    : entry_p_(&add_place("Unit", "", "entry" + id)),
+      exit_p_(&add_place("Unit", "", "exit" + id)) { }
+  PluginCNBase(const PluginCNBase &) = delete;
+  PluginCNBase(PluginCNBase &&) = default;
+
+  virtual void connect(const AddressableCN &acn) = 0;
+
+  template <typename PluggableCN>
+  void inject_into(PluggableCN &) & {
+    assert(false && "Only an r-value reference can be injected into a PluggableCN\n");
+  }
+
+  void inject_into(AddressableCN &acn) && {
+    connect(acn);
+    plug_in_(acn);
+  }
+
+  void inject_into(PluginCNGeneric &pcn) && {
+    plug_in_(pcn);
+  }
+
+  Place& entry_place() {
+    return *entry_p_;
+  }
+
+  Place& exit_place() {
+    return *exit_p_;
+  }
+
+  void set_entry(Place *p) {
+    entry_p_ = p;
+  }
+
+  void set_exit(Place *p) {
+    exit_p_ = p;
+  }
+
+private:
+  template <typename PluggableCN>
+  void plug_in_(PluggableCN &pcn) {
     // join entry & exit places
-    add_cf_edge(entry_place(), pcn->entry_place());
+    pcn.add_cf_edge(pcn.entry_place(), entry_place());
 
     // set the new entry as the exit of injected net
-    set_entry_place(&pcn->exit_place());
+    pcn.set_entry(&exit_place());
+
+    // pass over the elements into `pcn`
+    pcn.takeover(move(*this));
   }
 
-  virtual void print(raw_ostream &os) const {
-    CommunicationNet::print(os);
-  }
-
-  // TODO: Plugin net does not know about these!
-  virtual void connect_asr(const Place &asr_p) { };
-  virtual void connect_arr(const Place &arr_p) { };
-  virtual void connect_csr(const Place &csr_p) { };
-  virtual void connect_crr(const Place &crr_p) { };
-
-
-
-    using namespace std::placeholders;
-    auto store_non_empty = std::bind(store_if_not<std::string>, _1, _2, "");
-
-    std::vector<std::string> parts;
-    parts.push_back("id=unique(id)");
-    store_non_empty(parts, prepare_part("src", src));
-    store_non_empty(parts, prepare_part("dest", dest));
-    store_non_empty(parts, prepare_part("tag", tag));
-    store_non_empty(parts, prepare_part("buffered", buffered));
-    return pp_vector(parts, "," + delim, "{", "}");
-  }
+  Place *entry_p_;
+  Place *exit_p_;
 };
-
-class AddressableCommNet : public PluginCommNet {
-
-  using Address = unsigned int;
-
-  const Address address;
-  const Place &asr;
-  const Place &arr;
-  const Place &csr;
-  const Place &crr;
-
-public:
-
-  AddressableCommNet(Address address)
-    : address(address),
-      asr(add_place("MessageToken", "", "Active Send Request")),
-      arr(add_place("MessageRequest", "", "Active Receive Request")),
-      csr(add_place("MessageRequest", "", "Completed Send Request")),
-      crr(add_place("MessageToken", "", "Completed Receive Request")) { }
-
-  AddressableCommNet(const AddressableCommNet &) = delete;
-  AddressableCommNet(AddressableCommNet &&) = default;
-
-  virtual void inject_pluign_cn(std::unique_ptr<PluginCommNet> pcn) {
-    pcn->connect_asr(asr);
-    pcn->connect_arr(arr);
-    pcn->connect_csr(csr);
-    pcn->connect_crr(crr);
-
-    PluginCommNet::inject_pluign_cn(std::move(pcn));
-  }
-
-  void print (raw_ostream &os) {
-    os << "Adress: " << address << "\n";
-    os << "------------------------------------------------------------\n";
-    CommunicationNet::print(os);
-    os << "------------------------------------------------------------\n\n";
-  }
-};
-
 
 } // end of anonymous namespace
 

@@ -13,12 +13,12 @@
 namespace cn {
 using namespace llvm;
 
+
 // ------------------------------------------------------------------------------
 // EmptyCN
 
 struct EmptyCN final : public PluginCNBase {
 
-public:
   ~EmptyCN() = default;
 
   EmptyCN(const CallSite &cs) : call_name(cs.getCalledFunction()->getName()) {

@@ -484,7 +484,7 @@ protected:
           continue;
         }
       }
-      // overtake element
+      // takeover element
       tmp_cn.add_(move(elem), tmp_cn.*storage);
       idx++;
     }
@@ -647,7 +647,7 @@ struct AddressableCN final : public CommunicationNet {
     embedded_cn.collapse();
   }
 
-  void takeover (CommunicationNet cn) override{
+  void takeover (CommunicationNet cn) override {
     embedded_cn.takeover(move(cn));
   }
 

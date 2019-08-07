@@ -67,11 +67,11 @@ private:
 struct NetElement : public Identifiable, public Printable {
   string name;
 
+  virtual ~NetElement() = default;
+
   NetElement(string name) : name(name) { }
   NetElement(const NetElement &) = delete;
   NetElement(NetElement &&) = default;
-
-  virtual ~NetElement() = default;
 
   virtual void print (raw_ostream &os) const {
     if (name.empty()) {

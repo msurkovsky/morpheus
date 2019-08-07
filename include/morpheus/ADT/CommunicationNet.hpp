@@ -259,78 +259,47 @@ public:
     print_(cf_edges_, os, 2);
   }
 
-  places_iterator       places_begin()       { return place_list.begin(); }
-  const_places_iterator places_begin() const { return place_list.begin(); }
-  places_iterator       places_end()         { return place_list.end(); }
-  const_places_iterator places_end()   const { return place_list.end(); }
-  bool                  places_empty() const { return place_list.empty(); }
+  // -------------------------------------------------------
+  // iterators
 
   iterator_range<places_iterator> places() {
-    return make_range(places_begin(), places_end());
+    return make_range(places_.begin(), places_.end());
   }
 
   iterator_range<const_places_iterator> places() const {
-    return make_range(places_begin(), places_end());
+    return make_range(places_.begin(), places_.end());
   }
 
-
-  transitions_iterator       transitions_begin()       { return transition_list.begin(); }
-  const_transitions_iterator transitions_begin() const { return transition_list.begin(); }
-  transitions_iterator       transitions_end()         { return transition_list.end(); }
-  const_transitions_iterator transitions_end()   const { return transition_list.end(); }
-  bool                       transitions_empty() const { return transition_list.empty(); }
-
   iterator_range<transitions_iterator> transitions() {
-    return make_range(transitions_begin(), transitions_end());
+    return make_range(transitions_.begin(), transitions_.end());
   }
 
   iterator_range<const_transitions_iterator> transitions() const {
-    return make_range(transitions_begin(), transitions_end());
+    return make_range(transitions_.begin(), transitions_.end());
   }
 
-
-  edges_iterator       iedges_begin()       { return input_edge_list.begin(); }
-  const_edges_iterator iedges_begin() const { return input_edge_list.begin(); }
-  edges_iterator       iedges_end()         { return input_edge_list.end(); }
-  const_edges_iterator iedges_end()   const { return input_edge_list.end(); }
-  bool                 iedges_empty() const { return input_edge_list.empty(); }
-
   iterator_range<edges_iterator> input_edges() {
-    return make_range(iedges_begin(), iedges_end());
+    return make_range(input_edges_.begin(), input_edges_.end());
   }
 
   iterator_range<const_edges_iterator> input_edges() const {
-    return make_range(iedges_begin(), iedges_end());
+    return make_range(input_edges_.begin(), input_edges_.end());
   }
 
-
-  edges_iterator       oedges_begin()       { return output_edge_list.begin(); }
-  const_edges_iterator oedges_begin() const { return output_edge_list.begin(); }
-  edges_iterator       oedges_end()         { return output_edge_list.end(); }
-  const_edges_iterator oedges_end()   const { return output_edge_list.end(); }
-  bool                 oedges_empty() const { return output_edge_list.empty(); }
-
   iterator_range<edges_iterator> output_edges() {
-    return make_range(oedges_begin(), oedges_end());
+    return make_range(output_edges_.begin(), output_edges_.end());
   }
 
   iterator_range<const_edges_iterator> output_edges() const {
-    return make_range(oedges_begin(), oedges_end());
+    return make_range(output_edges_.begin(), output_edges_.end());
   }
 
-
-  edges_iterator       cfedges_begin()       { return control_flow_edge_list.begin(); }
-  const_edges_iterator cfedges_begin() const { return control_flow_edge_list.begin(); }
-  edges_iterator       cfedges_end()         { return control_flow_edge_list.end(); }
-  const_edges_iterator cfedges_end()   const { return control_flow_edge_list.end(); }
-  bool                 cfedges_empty() const { return control_flow_edge_list.empty(); }
-
   iterator_range<edges_iterator> control_flow_edges() {
-    return make_range(cfedges_begin(), cfedges_end());
+    return make_range(cf_edges_.begin(), cf_edges_.end());
   }
 
   iterator_range<const_edges_iterator> control_flow_edges() const {
-    return make_range(cfedges_begin(), cfedges_end());
+    return make_range(cf_edges_.begin(), cf_edges_.end());
   }
 
 private:

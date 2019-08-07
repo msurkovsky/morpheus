@@ -395,11 +395,44 @@ public:
     exit_p = p;
   }
 
+  virtual void inject_pluign_cn(std::unique_ptr<PluginCommNet> pcn) {
+
+    // move elements
+    for (auto &p : pcn->places()) {
+      add_place(std::move(p));
+    }
+
+    for (auto &t : pcn->transitions()) {
+      add_transition(std::move(t));
+    }
+
+    for (auto &ie : pcn->input_edges()) {
+      add_input_edge(std::move(ie));
+    }
+
+    for (auto &oe : pcn->output_edges()) {
+      add_output_edge(std::move(oe));
+    }
+
+    for (auto &cfe : pcn->control_flow_edges()) {
+      add_cf_edge(std::move(cfe));
+    }
+
+    // join entry & exit places
+    add_cf_edge(*entry_place(), *pcn->entry_place());
+
+    // set the new entry as the exit of injected net
+    set_entry_place(pcn->exit_place());
+  }
+
   virtual void print(raw_ostream &os) const {
     CommunicationNet::print(os);
-
-    }
   }
+
+  virtual void connect_asr(const Place &asr_p) { };
+  virtual void connect_arr(const Place &arr_p) { };
+  virtual void connect_csr(const Place &csr_p) { };
+  virtual void connect_crr(const Place &crr_p) { };
 
 protected:
   std::string value_to_type(const Value &v, bool return_constant=true) {
@@ -461,7 +494,7 @@ protected:
   }
 };
 
-class AddressableCommNet : public CommunicationNet {
+class AddressableCommNet : public PluginCommNet {
 
   using Address = unsigned int;
 
@@ -472,6 +505,7 @@ class AddressableCommNet : public CommunicationNet {
   const Place &crr;
 
 public:
+
   AddressableCommNet(Address address)
     : address(address),
       asr(add_place("MessageToken", "", "Active Send Request")),
@@ -482,15 +516,13 @@ public:
   AddressableCommNet(const AddressableCommNet &) = delete;
   AddressableCommNet(AddressableCommNet &&) = default;
 
-  struct DummyT { };
-  using WhereSpec = DummyT;
-  using SubCN = DummyT;
+  virtual void inject_pluign_cn(std::unique_ptr<PluginCommNet> pcn) {
+    pcn->connect_asr(asr);
+    pcn->connect_arr(arr);
+    pcn->connect_csr(csr);
+    pcn->connect_crr(crr);
 
-  void emplace(WhereSpec wherespec, SubCN& sub_cn) {
-    // connect the sub-comm. net into a place
-
-    // TODO: Q: do I need something special from SubCN or can I use CommunicationNet itself directly?
-    //       Q: what is better to enhance CN or define new "extended type?"
+    PluginCommNet::inject_pluign_cn(std::move(pcn));
   }
 
   void print (raw_ostream &os) {

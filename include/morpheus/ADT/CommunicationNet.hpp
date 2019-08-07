@@ -337,12 +337,13 @@ private:
   Place *exit_p;
 
 public:
-  PluginCommNet() : id(generate_id()) { }
+  PluginCommNet()
+    : id(generate_id()),
+      entry_p(&add_place("Unit", "", "entry_" + std::to_string(get_id()))),
+      exit_p(&add_place("Unit", "", "exit" + std::to_string(get_id()))) { }
+
   PluginCommNet(const PluginCommNet &) = delete;
   PluginCommNet(PluginCommNet &&) = default;
-
-  virtual Place &entry_place() = 0;
-  virtual Place &exit_place() = 0;
 
   ID get_id() {
     return id;

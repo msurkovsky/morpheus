@@ -15,27 +15,13 @@ using namespace llvm;
 
 class EmptyCommNet : public PluginCommNet {
 
-  Place &entry_p;
-  Place &exit_p;
-
 public:
-
-  EmptyCommNet()
-    : entry_p(add_place("Unit", "")),
-      exit_p(add_place("Unit", "")) { }
-
+  EmptyCommNet() {
+    add_cf_edge(*entry_place(), *exit_place());
+  }
   EmptyCommNet(const EmptyCommNet &) = delete;
   EmptyCommNet(EmptyCommNet &&) = default;
-
-  Place &entry_place() {
-    return entry_p;
-  }
-
-  Place &exit_place() {
-    return exit_p;
-  }
 };
-
 
 class BaseSendRecv : public PluginCommNet {
 
@@ -104,19 +90,10 @@ class CN_MPI_Isend : public BaseSendRecv {
   Place &send_setting; // INPUT
   Place &send_data;    // INPUT
   Place &send_reqst;   // OUTPUT
-  Place &send_exit;   // unit exit place
+  Place &send_exit;    // unit exit place
   Transition &send;
 
 public:
-
-  Place &entry_place() {
-    return send_setting;
-  }
-
-  Place &exit_place() {
-    return send_exit;
-  }
-
   CN_MPI_Isend(const CallSite &cs)
     : name_prefix("send" + std::to_string(get_id())),
       send_setting(add_place("<empty>", "", name_prefix + "_setting")),
@@ -136,6 +113,13 @@ public:
 
     add_input_edge(send_data, send, TAKE, from_data_ae);
     add_input_edge(send_setting, send, TAKE, from_setting_ae);
+
+    add_cf_edge(*entry_place(), send_setting);
+    add_cf_edge(send_exit, *exit_place());
+  }
+
+  virtual void connect_asr(const Place &p) {
+    add_output_edge(send, p);
   }
 };
 

@@ -101,6 +101,21 @@ struct NetElement : public Identifiable, public Printable<NetElement> {
 };
 
 
+template<typename E>
+struct Unresolved final {
+
+  Unresolved(E &element, const Value &mpi_rqst)
+    : element(element),
+      mpi_rqst(mpi_rqst) { }
+  Unresolved(const Unresolved &) = delete;
+  Unresolved(Unresolved &&) = default;
+  Unresolved& operator=(const Unresolved &) = delete;
+  Unresolved& operator=(Unresolved &&) = default;
+
+  E& element;
+  const Value &mpi_rqst;
+};
+
 struct Edge final : public Printable<Edge> {
 
   explicit Edge(NetElement &startpoint, NetElement &endpoint, string arc_expr,
@@ -161,7 +176,6 @@ struct Transition final : NetElement {
   string name;
   ConditionList guard;
 };
-
 
 // ==========================================================
 // CommunicationNet
@@ -540,6 +554,16 @@ public:
     return add_edge_(src, dest, "", CONTROL_FLOW, SINGLE_HEADED);
   }
 
+  template <typename E>
+  Unresolved<E>& add_unresolved(E &elem, const Value &mpi_request) {
+    return add_unresolved_(elem, mpi_request);
+  }
+
+  template <typename E>
+  Unresolved<E>& add_unresolved(Unresolved<E> elem) {
+    return add_unresolved_(move(elem));
+  }
+
   // -------------------------------------------------------
   // iterators
 
@@ -557,6 +581,23 @@ public:
 
   iterator_range<typename Elements<Transition>::const_iterator> transitions() const {
     return make_range(transitions_.begin(), transitions_.end());
+  }
+
+  iterator_range<typename Elements<Unresolved<Place>>::iterator> unresolved_places() {
+    return make_range(unresolved_places_.begin(), unresolved_places_.end());
+  }
+
+  iterator_range<typename Elements<Unresolved<Place>>::const_iterator> unresolved_places() const {
+    return make_range(unresolved_places_.begin(), unresolved_places_.end());
+  }
+
+  iterator_range<typename Elements<Unresolved<Transition>>::iterator> unresolved_transitions() {
+    return make_range(unresolved_transitions_.begin(), unresolved_transitions_.end());
+  }
+
+  iterator_range<typename Elements<Unresolved<Transition>>::const_iterator>
+  unresolved_transitions() const {
+    return make_range(unresolved_transitions_.begin(), unresolved_transitions_.end());
   }
 
 private:
@@ -606,8 +647,33 @@ private:
     move(src.begin(), src.end(), back_inserter(target));
   }
 
+  inline Unresolved<Place>&
+  add_unresolved_(Place &place, const Value &mpi_request) {
+    return add_(make_element_<Unresolved<Place>>(place, mpi_request),
+                unresolved_places_);
+  }
+
+  inline Unresolved<Transition>&
+  add_unresolved_(Transition &transition, const Value &mpi_request) {
+    return add_(make_element_<Unresolved<Transition>>(transition, mpi_request),
+                unresolved_transitions_);
+  }
+
+  inline Unresolved<Place>&
+  add_unresolved_(Element<Unresolved<Place>> p) {
+    return add_(move(p), unresolved_places_);
+  }
+
+  inline Unresolved<Transition>&
+  add_unresolved_(Element<Unresolved<Transition>> t) {
+    return add_(move(t), unresolved_transitions_);
+  }
+
   Elements<Place> places_;
   Elements<Transition> transitions_;
+
+  Elements<Unresolved<Place>> unresolved_places_;
+  Elements<Unresolved<Transition>> unresolved_transitions_;
 
   friend AddressableCN; // make AddressableCN a friend class to override remove methods
 };

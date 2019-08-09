@@ -33,6 +33,8 @@ namespace cn {
   void CommunicationNet::collapse() {
     CommunicationNet tmp_cn;
 
+    // TODO: before collapsing solve unresolved places & transitions
+
     collapse(places_, tmp_cn, &CommunicationNet::places_);
     collapse(transitions_, tmp_cn, &CommunicationNet::transitions_);
 
@@ -44,6 +46,8 @@ namespace cn {
   void CommunicationNet::takeover(CommunicationNet cn) {
     takeover_(places_, cn.places());
     takeover_(transitions_, cn.transitions());
+    takeover_(unresolved_places_, cn.unresolved_places());
+    takeover_(unresolved_transitions_, cn.unresolved_transitions());
   }
 
 } // end of communication net (cn) namespace

@@ -109,7 +109,7 @@ private:
 // ------------------------------------------------------------------------------
 // CN_MPI_Irecv
 
-struct CN_MPI_Irecv : public PluginCNBase {
+struct CN_MPI_RecvBase : public PluginCNBase { // common base class for both blocking and non-blocking calls
   // MPI_Irecv(
   //   void* buff;             // OUT; data set to 'recv_data' -- this is done via corresponding wait
   //   int count,              // IN
@@ -117,7 +117,7 @@ struct CN_MPI_Irecv : public PluginCNBase {
   //   int source,             // IN;  it goes to the setting place
   //   int tag,                // IN;  it goes to the setting place
   //   MPI_Comm comm,          // IN;  IGNORED (for the current version it is supposed to be MPI_COMM_WORLD)
-  //   MPI_Request *request    // OUT; locally stored request it is accompanied with CNs' type: MessageRequest
+  // - MPI_Request *request    // OUT; locally stored request it is accompanied with CNs' type: MessageRequest
   // );
 
   std::string name_prefix;
@@ -127,9 +127,9 @@ struct CN_MPI_Irecv : public PluginCNBase {
   Place &recv_exit;
   Transition &recv;
 
-  virtual ~CN_MPI_Irecv() = default;
+  virtual ~CN_MPI_RecvBase() = default;
 
-  CN_MPI_Irecv(const CallSite &cs):
+  CN_MPI_RecvBase(const CallSite &cs):
     name_prefix("recv" + get_id()),
     recv_params(add_place("<empty>", "", name_prefix + "_params")),
     recv_data(add_place("<empty>", "", name_prefix + "_data")),
@@ -157,18 +157,44 @@ struct CN_MPI_Irecv : public PluginCNBase {
     add_cf_edge(recv_exit, exit_place());
   }
 
-  CN_MPI_Irecv(const CN_MPI_Irecv &) = delete;
-  CN_MPI_Irecv(CN_MPI_Irecv &&) = default;
+  CN_MPI_RecvBase(const CN_MPI_RecvBase &) = delete;
+  CN_MPI_RecvBase(CN_MPI_RecvBase &&) = default;
 
   virtual void connect(AddressableCN &acn) {
     add_output_edge(recv, acn.arr, compute_msg_rqst_value(source, nullptr, *tag, "false"));
   }
 
-private:
+protected:
   Value const *size;
   Value const *datatype;
   Value const *source;
   Value const *tag;
+};
+
+struct CN_MPI_Irecv : public CN_MPI_RecvBase {
+
+  virtual ~CN_MPI_Irecv() = default;
+
+  CN_MPI_Irecv(const CallSite &cs) : CN_MPI_RecvBase(cs) {
+    mpi_rqst = cs.getArgument(6);
+
+    add_unresolved_place(
+      recv_reqst, *mpi_rqst,
+      create_resolve_fn_(recv_data, compute_data_buffer_value(*datatype, *size)));
+  }
+
+  CN_MPI_Irecv(const CN_MPI_Irecv &) = delete;
+  CN_MPI_Irecv(CN_MPI_Irecv &&) = default;
+
+private:
+  UnresolvedPlace::ResolveFnTy create_resolve_fn_(Place &recv_data, string ae_to_recv_data) {
+    return [&recv_data, ae_to_recv_data](CommunicationNet &cn, Place &initiated_rqst, Transition &t_wait) {
+      cn.add_input_edge(initiated_rqst, t_wait, "(reqst, {id=id})");
+      cn.add_output_edge(t_wait, recv_data, ae_to_recv_data);
+    };
+  }
+
+  Value const *mpi_rqst;
 };
 
 // ------------------------------------------------------------------------------
@@ -186,19 +212,31 @@ struct CN_MPI_Wait : public PluginCNBase {
 
   virtual ~CN_MPI_Wait() = default;
 
-  CN_MPI_Wait(/*const CallSite &cs*/)
+  // NOTE: An empty constructor serves to create wait without a "real" request
+  // it is resolved by knowledge of particular (blocking) call.
+  CN_MPI_Wait()
     : name_prefix("wait" + get_id()),
       wait(add_transition({}, name_prefix)) {
 
     add_cf_edge(entry_place(), wait);
     add_cf_edge(wait, exit_place());
   }
+
+  CN_MPI_Wait(const CallSite &cs) : CN_MPI_Wait() {
+
+    mpi_rqst = cs.getArgument(0);
+    add_unresolved_transition(wait, *mpi_rqst);
+  }
+
   CN_MPI_Wait(const CN_MPI_Wait &) = delete;
   CN_MPI_Wait(CN_MPI_Wait &&) = default;
 
   virtual void connect(AddressableCN &acn) {
     add_input_edge(acn.csr /* TODO: choose according to type */, wait, "TODO:", SHUFFLE);
   }
+
+private:
+  Value const *mpi_rqst;
 };
 
 
@@ -244,7 +282,7 @@ struct CN_MPI_Recv final : public PluginCNBase {
 
   CN_MPI_Recv(const CallSite &cs)
     : cn_irecv(cs),
-      cn_wait(/* TODO: */),
+      cn_wait(),
       t_wait(cn_wait.wait) {
 
     Value const *size = cs.getArgument(1);
@@ -293,6 +331,8 @@ PluginCNGeneric createCommSubnet(const CallSite &cs) {
     return CN_MPI_Irecv(cs);
   } else if (call_name == "MPI_Recv") {
     return CN_MPI_Recv(cs);
+  } else if (call_name == "MPI_Wait") {
+    return CN_MPI_Wait(cs);
   }
   return EmptyCN(cs);
 }

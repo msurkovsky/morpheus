@@ -545,6 +545,7 @@ public:
   CommunicationNet& operator=(CommunicationNet &&) = default;
 
 
+  virtual void resolve_unresolved();
   virtual void collapse();
   virtual void takeover(CommunicationNet cn);
 

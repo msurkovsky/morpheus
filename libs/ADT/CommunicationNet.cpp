@@ -30,10 +30,41 @@ namespace cn {
   }
 
   // + public methods
+  void CommunicationNet::resolve_unresolved() {
+    std::vector<UnresolvedPlace *> to_remove;
+
+    // match unresolved places with unresolved transitions
+    for (auto up_it = unresolved_places_.begin();
+         up_it != unresolved_places_.end();
+         up_it++) {
+
+      auto &up = *up_it;
+      auto matched_ut_it = std::find_if(
+        unresolved_transitions_.begin(), unresolved_transitions_.end(),
+        [&up](const auto &ut) { return &up->mpi_rqst == &ut->mpi_rqst; });
+      if (matched_ut_it != unresolved_transitions_.end()) {
+        auto &ut = *matched_ut_it;
+        up->resolve(*this, up->place, ut->transition);
+        unresolved_transitions_.erase(matched_ut_it);
+        to_remove.push_back(up.get());
+      }
+    }
+
+    // remove resolved places
+    auto remove_from_it = unresolved_places_.end();
+    while (!to_remove.empty()) {
+      UnresolvedPlace *up_rm = to_remove.back();
+      to_remove.pop_back();
+      remove_from_it = std::remove_if(unresolved_places_.begin(), remove_from_it,
+                                      [up_rm](const auto &up) { return up.get() == up_rm; });
+    }
+    unresolved_places_.erase(remove_from_it, unresolved_places_.end());
+  }
+
   void CommunicationNet::collapse() {
     CommunicationNet tmp_cn;
 
-    // TODO: before collapsing solve unresolved places & transitions
+    resolve_unresolved();
 
     collapse(places_, tmp_cn, &CommunicationNet::places_);
     collapse(transitions_, tmp_cn, &CommunicationNet::transitions_);

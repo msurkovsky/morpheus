@@ -198,7 +198,7 @@ private:
 };
 
 // ------------------------------------------------------------------------------
-// CN_MPI_Isend
+// CN_MPI_Wait
 
 struct CN_MPI_Wait : public PluginCNBase {
 
@@ -276,27 +276,25 @@ private:
 // ------------------------------------------------------------------------------
 // CN_MPI_Isend
 
-struct CN_MPI_Recv final : public PluginCNBase {
+struct CN_MPI_Recv final : public CN_MPI_RecvBase {
 
   virtual ~CN_MPI_Recv() = default;
 
   CN_MPI_Recv(const CallSite &cs)
-    : cn_irecv(cs),
+    : CN_MPI_RecvBase(cs),
       cn_wait(),
       t_wait(cn_wait.wait) {
 
     Value const *size = cs.getArgument(1);
     Value const *datatype = cs.getArgument(2);
 
-    add_input_edge(cn_irecv.recv_reqst, t_wait, "(reqst, {id=id})");
-    add_output_edge(t_wait, cn_irecv.recv_data,
+    add_input_edge(recv_reqst, t_wait, "(reqst, {id=id})");
+    add_output_edge(t_wait, recv_data,
                     compute_data_buffer_value(*datatype, *size));
 
-    add_cf_edge(entry_place(), cn_irecv.entry_place());
-    add_cf_edge(cn_wait.exit_place(), exit_place());
-    add_cf_edge(cn_irecv.exit_place(), cn_wait.entry_place());
+    add_cf_edge(exit_place(), cn_wait.entry_place());
+    set_exit(cn_wait.exit_place());
 
-    takeover(std::move(cn_irecv));
     takeover(std::move(cn_wait));
   }
 
@@ -304,12 +302,11 @@ struct CN_MPI_Recv final : public PluginCNBase {
   CN_MPI_Recv(CN_MPI_Recv &&) = default;
 
   void connect (AddressableCN &acn) {
-    cn_irecv.connect(acn);
+    CN_MPI_RecvBase::connect(acn);
     add_input_edge(acn.crr, t_wait, "{data=data, envelope={id=id}}", SHUFFLE);
   }
 
 private:
-  CN_MPI_Irecv cn_irecv;
   CN_MPI_Wait cn_wait;
 
   Transition &t_wait;

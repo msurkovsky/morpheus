@@ -1111,6 +1111,8 @@ struct CFG_CN final : public PluginCNBase {
               [] (const BasicBlock *bb) { return cn::BasicBlockCN(bb); });
 
     interconnect_basicblock_cns();
+
+    expose_loops();
   }
 
   CFG_CN(const CFG_CN &) = delete;
@@ -1194,6 +1196,63 @@ private:
     }
 
     return exit_bbs;
+  }
+
+  void update_loop_branch(BasicBlock &loop_branch, string trigger_input_expr) {
+    auto found_bbcn_it = find_if(
+      bb_cns.begin(), bb_cns.end(),
+      [&loop_branch] (const BasicBlockCN &bbcn) { return &loop_branch == bbcn.bb; });
+
+    assert(found_bbcn_it != bb_cns.end() &&
+           "There has to exists the corresponding BasicBlockCN for the given BasicBlock.");
+
+    BasicBlockCN &bbcn = *found_bbcn_it;
+
+    // change the entry place of loop branch
+    // this will collapse with exit place of header loop
+    Place &entry_p = bbcn.entry_place();
+    std::string entry_name = entry_p.name;
+
+    entry_p.type = "Bool";
+    entry_p.name = "";
+
+    // trigger the loop branch
+    Transition &trigger_branch = bbcn.add_transition(ConditionList());
+    bbcn.add_input_edge(entry_p, trigger_branch, trigger_input_expr);
+
+    // add a new Unit place representing the new entry place
+    Place &new_entry = bbcn.add_place("Unit", "", entry_name);
+    bbcn.add_cf_edge(trigger_branch, new_entry);
+    bbcn.set_entry(new_entry);
+  }
+
+  void expose_loops() {
+    // NOTE: expose the loops in a way that loop header
+    //       is represented by a Boolean place, and each
+    //       branch is triggered by a transition
+    for (BasicBlockCN &bbcn : bb_cns) {
+      auto *loop = loop_info.getLoopFor(bbcn.bb);
+      if (loop && loop->getHeader() == bbcn.bb) {
+
+        // change the type of exit place as the loop header
+        // represents the condition in the CFG structure
+        Place &exit_p = bbcn.exit_place();
+        exit_p.type = "Bool";
+        exit_p.name = "test_loop " + bbcn.get_id();
+
+        // Body of the loop
+        auto *loop_latch = loop->getLoopLatch();
+        if (loop_latch) {
+          update_loop_branch(*loop_latch, "true");
+        }
+
+        // Exit branch of the loop
+        auto *loop_exit = loop->getExitBlock();
+        if (loop_exit) {
+          update_loop_branch(*loop_exit, "false");
+        }
+      }
+    }
   }
 };
 

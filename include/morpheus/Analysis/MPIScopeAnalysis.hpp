@@ -16,6 +16,7 @@
 
 #include "llvm/ADT/ilist_iterator.h"
 #include "llvm/ADT/simple_ilist.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/ModuleSummaryIndex.h"
 
@@ -45,11 +46,13 @@ namespace llvm {
 
     bool isValid();
     Function *getFunction();
+    LoopInfo *getLoopInfo();
 
   private:
     void process_cgnode(CallGraphNode const *cgn, const CallsTrack &track, VisitedNodes &visited);
 
     Function *scope_fn;
+    LoopInfo loop_info;
     std::unordered_map<Instruction const *, CallsTrack> instruction_calls_track;
 
     friend raw_ostream &operator<< (raw_ostream &out, const CallNodeDataT &data);

@@ -24,9 +24,10 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
   MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
 
   Function *scope_fn = mpi_scope.getFunction();
+  LoopInfo &loop_info = *mpi_scope.getLoopInfo();
 
   // create the CN representing scope function and following the CFG structure
-  cn::CFG_CN cfg_cn(*scope_fn);
+  cn::CFG_CN cfg_cn(*scope_fn, loop_info);
 
   // for each basic block in CFG_CN add a pcn if possible
   for (cn::BasicBlockCN &bbcn : cfg_cn.bb_cns) {

@@ -4,6 +4,7 @@
 #include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/ModuleSummaryAnalysis.h"
 #include "llvm/IR/CallSite.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/ModuleSummaryIndex.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -126,6 +127,7 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, MPILabelling &labelling, CallGraph
 
   if (dp == sp) { // MPI Scope
     scope_fn = dp->data.second;
+    loop_info = LoopInfo(DominatorTree(*scope_fn));
   } else { // NO Scope
     scope_fn = nullptr;
   }
@@ -133,6 +135,10 @@ MPIScope::MPIScope(ModuleSummaryIndex &index, MPILabelling &labelling, CallGraph
 
 Function *MPIScope::getFunction() {
   return scope_fn;
+}
+
+LoopInfo *MPIScope::getLoopInfo() {
+  return &loop_info;
 }
 
 bool MPIScope::isValid() {

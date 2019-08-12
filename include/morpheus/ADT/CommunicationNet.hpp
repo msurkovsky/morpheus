@@ -10,6 +10,7 @@
 
 #include "llvm/ADT/BreadthFirstIterator.h"
 #include "llvm/ADT/iterator_range.h"
+#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/Support/raw_ostream.h"
@@ -1013,6 +1014,7 @@ struct BasicBlockCN final : public PluginCNBase {
     // store the pcn
     stored_pcns_.push_back(move(pcn));
   }
+
 private:
   template <typename PluggableCN>
   void plug_in_(PluggableCN &pcn) {
@@ -1039,11 +1041,12 @@ private:
 struct CFG_CN final : public PluginCNBase {
 
   const Function &fn;
+  const LoopInfo &loop_info;
   vector<BasicBlockCN> bb_cns;
 
   ~CFG_CN() = default;
 
-  CFG_CN(const Function &fn) : fn(fn) {
+  CFG_CN(const Function &fn, LoopInfo &loop_info) : fn(fn), loop_info(loop_info) {
     string str;
     raw_string_ostream rso(str);
     fn.printAsOperand(rso, false);

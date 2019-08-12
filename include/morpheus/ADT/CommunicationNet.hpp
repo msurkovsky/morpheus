@@ -158,7 +158,6 @@ struct Transition final : NetElement {
     return "transition_t";
   }
 
-  string name;
   ConditionList guard;
 };
 

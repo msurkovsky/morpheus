@@ -47,7 +47,11 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
   // TODO: take rank/address value from the input code
   cn::AddressableCN acn(1);
   std::move(cfg_cn).inject_into(acn);
+  // resolve unresolved elements
+  acn.embedded_cn.resolve_unresolved();
+  // enclose the cn
   acn.enclose();
+
 
   std::ofstream dot;
   dot.open("acn-" + acn.get_id() + ".dot");

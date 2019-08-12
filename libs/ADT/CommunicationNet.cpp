@@ -64,8 +64,6 @@ namespace cn {
   void CommunicationNet::collapse() {
     CommunicationNet tmp_cn;
 
-    resolve_unresolved();
-
     collapse(places_, tmp_cn, &CommunicationNet::places_);
     collapse(transitions_, tmp_cn, &CommunicationNet::transitions_);
 

@@ -31,7 +31,7 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
   // for each basic block in CFG_CN add a pcn if possible
   for (cn::BasicBlockCN &bbcn : cfg_cn.bb_cns) {
     // plug-in nets for all MPI calls
-    MPILabelling::MPICheckpoints checkpoints = mpi_labelling.get_mpi_checkpoints(&bbcn.bb);
+    MPILabelling::MPICheckpoints checkpoints = mpi_labelling.get_mpi_checkpoints(bbcn.bb);
     while (!checkpoints.empty()) {
       auto checkpoint = checkpoints.front();
       if (checkpoint.second == MPICallType::DIRECT) { // TODO: first solve direct calls

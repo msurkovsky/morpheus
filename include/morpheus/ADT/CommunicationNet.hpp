@@ -966,15 +966,15 @@ private:
 
 struct BasicBlockCN final : public PluginCNBase {
 
-  const BasicBlock &bb;
+  BasicBlock const *bb;
 
   ~BasicBlockCN() = default;
 
-  BasicBlockCN(const BasicBlock &bb) : bb(bb) {
+  BasicBlockCN(BasicBlock const *bb) : bb(bb) {
 
     string str;
     raw_string_ostream rso(str);
-    bb.printAsOperand(rso, false);
+    bb->printAsOperand(rso, false);
     string bb_name = " " + rso.str();
 
     entry_place().name += bb_name;
@@ -1057,7 +1057,7 @@ struct CFG_CN final : public PluginCNBase {
     auto bfs_it = breadth_first(&fn);
     transform(bfs_it.begin(), bfs_it.end(),
               back_inserter(bb_cns),
-              [] (const BasicBlock *bb) { return cn::BasicBlockCN(*bb); });
+              [] (const BasicBlock *bb) { return cn::BasicBlockCN(bb); });
 
     interconnect_basicblock_cns();
   }
@@ -1093,13 +1093,13 @@ private:
     // TODO: think about a bit more optimal solution
 
     for (BasicBlockCN &bbcn : bb_cns) {
-      const BasicBlock *bb = &bbcn.bb;
+      const BasicBlock *bb = bbcn.bb;
 
       for (const BasicBlock *pred_bb : predecessors(bb)) {
         std::for_each(bb_cns.begin(),
                       bb_cns.end(),
                       [pred_bb, &bbcn] (BasicBlockCN &bbcn_) {
-                        if (pred_bb == &bbcn_.bb) {
+                        if (pred_bb == bbcn_.bb) {
                           bbcn_.add_cf_edge(bbcn_.exit_place(), bbcn.entry_place());
                         }
                       });
@@ -1117,7 +1117,7 @@ private:
   BasicBlockCN& get_entry_bb() {
     // as the basic blocks are stored in bfs manner, the first one is the entry one.
     BasicBlockCN& entry_bb = bb_cns.front();
-    auto it = predecessors(&entry_bb.bb);
+    auto it = predecessors(entry_bb.bb);
     assert(it.begin() == it.end() && "Entry basic block cannot have predecessor!");
     return entry_bb;
   }
@@ -1131,7 +1131,7 @@ private:
     while (i != end) {
       i = find_if(i, end,
                   [] (const BasicBlockCN &bbcn) {
-                    auto it = successors(&bbcn.bb);
+                    auto it = successors(bbcn.bb);
                     // return true only when no successor of the inner basic block
                     return it.begin() == it.end();
                   });

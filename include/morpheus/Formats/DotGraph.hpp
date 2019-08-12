@@ -25,10 +25,17 @@ namespace cn {
       }
 
       ostream& format(ostream &os, const Edge &edge) const {
+        BasicBlockCN::EdgePredicate<CONTROL_FLOW> is_cf;
+        string color = "black";
+        if (is_cf(edge)) {
+          color = "gray";
+        }
+
         os << edge.startpoint.get_id() << ":box:c"
            << " -> "
            << edge.endpoint.get_id() << ":box:c"
-           << " [label=\"" << edge.arc_expr << "\"];";
+           << " [label=\"" << edge.arc_expr << "\" color=\"" << color << "\" fontname=\"monospace\"];";
+
         return os;
       }
 

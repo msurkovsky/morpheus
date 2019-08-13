@@ -67,10 +67,10 @@ namespace cn {
     collapse_topdown(transitions_, tmp_cn, &CommunicationNet::transitions_);
     std::swap(tmp_cn, *this);
 
-    CommunicationNet tmp_cn2;
-    collapse_bottomup(places_, tmp_cn2, &CommunicationNet::places_);
-    collapse_bottomup(transitions_, tmp_cn2, &CommunicationNet::transitions_);
-    std::swap(tmp_cn2, *this);
+    tmp_cn.clear();
+    collapse_bottomup(places_, tmp_cn, &CommunicationNet::places_);
+    collapse_bottomup(transitions_, tmp_cn, &CommunicationNet::transitions_);
+    std::swap(tmp_cn, *this);
 
     reduce_parallel_paths();
   }

@@ -588,6 +588,11 @@ public:
   virtual void collapse();
   virtual void takeover(CommunicationNet cn);
 
+  virtual void clear() {
+    places_.clear();
+    transitions_.clear();
+  }
+
   Place& add_place(string type, string init_expr, string name="") {
     return add_(make_element_<Place>(name, type, init_expr), places_);
   }
@@ -762,6 +767,11 @@ struct AddressableCN final : public CommunicationNet {
 
   void takeover (CommunicationNet cn) override {
     embedded_cn.takeover(move(cn));
+  }
+
+  void clear () override {
+    CommunicationNet::clear();
+    embedded_cn.clear();
   }
 
   // ---------------------------------------------------------------------------

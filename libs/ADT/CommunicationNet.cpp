@@ -63,11 +63,14 @@ namespace cn {
 
   void CommunicationNet::collapse() {
     CommunicationNet tmp_cn;
-
-    collapse(places_, tmp_cn, &CommunicationNet::places_);
-    collapse(transitions_, tmp_cn, &CommunicationNet::transitions_);
-
+    collapse_topdown(places_, tmp_cn, &CommunicationNet::places_);
+    collapse_topdown(transitions_, tmp_cn, &CommunicationNet::transitions_);
     std::swap(tmp_cn, *this);
+
+    CommunicationNet tmp_cn2;
+    collapse_bottomup(places_, tmp_cn2, &CommunicationNet::places_);
+    collapse_bottomup(transitions_, tmp_cn2, &CommunicationNet::transitions_);
+    std::swap(tmp_cn2, *this);
 
     reduce_parallel_paths();
   }

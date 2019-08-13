@@ -484,8 +484,12 @@ protected:
     return false;
   }
 
-  void reconnect(const Edge &e) {
+  void reconnect_to_endpoint(Edge &e) { // The endpoint of the edge remains preserved
     NetElement &startpoint = e.startpoint;
+    remove_refs(startpoint); // NOTE: Remove the references stored within `referenced_by`
+                             //       info at the startpoint as the startpoint is
+                             //       not going to be preserved.
+
     for (Edge *ref_e : startpoint.referenced_by) {
       Elements<Edge> &owner_storage = ref_e->startpoint.leads_to;
 
@@ -507,19 +511,31 @@ protected:
     }
   }
 
+  void reconnect_to_startpoint(Edge &e) { // The startpoint of the edge remains preserved
+    NetElement &endpoint = e.endpoint;
+    for (Element<Edge> &edge : endpoint.leads_to) {
+      Element<Edge> new_edge = create_edge_(e.startpoint, edge->endpoint, edge->arc_expr,
+                                            edge->get_category(), edge->get_type());
+      // NOTE: The new edges has to be added and the old one removed.
+      //       The edges cannot be swapped as within reconnecting_topdown because there
+      //       is no one-to-one matching. Single edge can be replaced by more edges.
+      add_edge_(move(new_edge));
+    }
+    remove_edge(e);
+  }
+
   template <typename T>
-  void collapse(Elements<T> &elements,
-                CommunicationNet &tmp_cn,
-                Elements<T> CommunicationNet::*storage) {
+  void collapse_topdown(Elements<T> &elements,
+                 CommunicationNet &tmp_cn,
+                 Elements<T> CommunicationNet::*storage) {
+
     size_t idx = 0;
     while (idx < elements.size()) {
       Element<T> &elem = elements[idx];
       if (elem->leads_to.size() == 1) { // only one-path nodes can be collapsed
         Element<Edge> &e = elem->leads_to.back();
         if (is_collapsible(*e)) {
-          remove_refs(*elem); // remove the references stored within `referenced_by`
-                              // info at net elements
-          reconnect(*e);
+          reconnect_to_endpoint(*e);
 
           // skip the element, hence remove it
           idx++;
@@ -527,6 +543,29 @@ protected:
         }
       }
       // takeover element
+      tmp_cn.add_(move(elem), tmp_cn.*storage);
+      idx++;
+    }
+  }
+
+  template <typename T>
+  void collapse_bottomup(Elements<T> &elements,
+                         CommunicationNet &tmp_cn,
+                         Elements<T> CommunicationNet::*storage) {
+
+    size_t idx = 0;
+    while (idx < elements.size()) {
+      Element<T> &elem = elements[idx];
+      if (elem->referenced_by.size() == 1) {
+        Edge *e = elem->referenced_by.back();
+        if (is_collapsible(*e)) {
+          reconnect_to_startpoint(*e);
+
+          // skip the element, and so remove it
+          idx++;
+          continue;
+        }
+      }
       tmp_cn.add_(move(elem), tmp_cn.*storage);
       idx++;
     }

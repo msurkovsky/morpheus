@@ -330,6 +330,54 @@ private:
   Transition &t_wait;
 };
 
+
+// -----------------------------------------------------------------------------
+// CN_MPI_Waitall
+
+struct CN_MPI_Waitall final : public PluginCNBase {
+
+  // MPI_Waitall(
+  //   int count                        // IN
+  //   MPI_Request array_of_requests[]  // INOUT
+  //   MPI_Status array_of_statuses[]   // OUT
+  // )
+
+  std::string name_prefix;
+  Place &waitall_count;
+  Place &waitall_rqsts;
+  Transition &waitall;
+  // TODO: place with statuses
+
+  CN_MPI_Waitall(const CallSite &cs)
+    : name_prefix("waitall" + get_id()),
+      waitall_count(add_place("Int", "", name_prefix + "_count")),
+      waitall_rqsts(add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqsts")),
+      waitall(add_transition({}, name_prefix)) {
+
+    // connect entry and exit points
+    add_cf_edge(entry_place(), waitall);
+    add_cf_edge(waitall, exit_place());
+    add_input_edge(waitall_count, waitall, "size");
+    add_input_edge(waitall_rqsts, waitall, "take(_, size, requests)");
+
+    mpi_rqsts = cs.getArgument(1);
+    add_unresolved_transition(waitall, *mpi_rqsts);
+  }
+
+  CN_MPI_Waitall(const CN_MPI_Waitall &) = delete;
+  CN_MPI_Waitall(CN_MPI_Waitall &&) = default;
+
+  void connect(AddressableCN &acn) override {
+    add_input_edge(acn.crr /* TODO: choose according to type */, waitall,
+                   ("take(requests|(_, {id=id}) =>* {envelope={id=id}},\\l"
+                    "     size,\\l"
+                    "     msg_tokens)\\l"), SHUFFLE);
+  }
+
+private:
+  Value const *mpi_rqsts;
+};
+
 // ===========================================================================
 // CNs factory
 
@@ -348,6 +396,8 @@ PluginCNGeneric createCommSubnet(const CallSite &cs) {
     return CN_MPI_Recv(cs);
   } else if (call_name == "MPI_Wait") {
     return CN_MPI_Wait(cs);
+  } else if (call_name == "MPI_Waitall") {
+    return CN_MPI_Waitall(cs);
   }
   return EmptyCN(cs);
 }

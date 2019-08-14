@@ -278,7 +278,7 @@ struct CN_MPI_Send final : public PluginCNBase {
   CN_MPI_Send(CN_MPI_Send &&) = default;
 
 
-  void connect(AddressableCN &acn) {
+  void connect(AddressableCN &acn) override {
     cn_isend.connect(acn);
     add_input_edge(acn.csr, t_wait, "[buffered] {data=data, envelope={id=id}}", SHUFFLE);
   }

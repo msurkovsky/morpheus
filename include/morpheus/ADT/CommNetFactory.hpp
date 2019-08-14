@@ -219,7 +219,7 @@ private:
 // ------------------------------------------------------------------------------
 // CN_MPI_Wait
 
-struct CN_MPI_Wait : public PluginCNBase {
+struct CN_MPI_Wait final : public PluginCNBase {
 
   // MPI_Wait(
   //   MPI_Request *request // INOUT
@@ -228,8 +228,7 @@ struct CN_MPI_Wait : public PluginCNBase {
 
   std::string name_prefix;
   Transition &wait;
-
-  virtual ~CN_MPI_Wait() = default;
+  // TODO: add status place (but only if needed)
 
   // NOTE: An empty constructor serves to create wait without a "real" request
   // it is resolved by knowledge of particular (blocking) call.
@@ -250,7 +249,7 @@ struct CN_MPI_Wait : public PluginCNBase {
   CN_MPI_Wait(const CN_MPI_Wait &) = delete;
   CN_MPI_Wait(CN_MPI_Wait &&) = default;
 
-  virtual void connect(AddressableCN &acn) {
+  void connect(AddressableCN &acn) override {
     add_input_edge(acn.csr /* TODO: choose according to type */, wait, "TODO:", SHUFFLE);
   }
 

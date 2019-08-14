@@ -44,7 +44,7 @@ namespace cn {
         [&up](const auto &ut) { return &up->mpi_rqst == &ut->mpi_rqst; });
       if (matched_ut_it != unresolved_transitions_.end()) {
         auto &ut = *matched_ut_it;
-        up->resolve(*this, up->place, ut->transition);
+        up->resolve(*this, up->place, ut->transition, ut->unresolved_connect);
         unresolved_transitions_.erase(matched_ut_it);
         to_remove.push_back(up.get());
       }

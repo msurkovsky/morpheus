@@ -199,17 +199,49 @@ struct CN_MPI_Irecv : public CN_MPI_RecvBase {
 
 private:
   UnresolvedPlace::ResolveFnTy create_resolve_fn_(Place &recv_data, string ae_to_recv_data) {
-    return [&recv_data, ae_to_recv_data](CommunicationNet &cn, Place &initiated_rqst, Transition &t_wait) {
+    return [&recv_data, ae_to_recv_data] (CommunicationNet &cn,
+                                          Place &initiated_rqst,
+                                          Transition &t_wait,
+                                          UnresolvedConnect &uc) {
       cn.add_input_edge(initiated_rqst, t_wait, "(reqst, {id=id})");
       cn.add_output_edge(t_wait, recv_data, ae_to_recv_data);
+
+      if (uc.acn) {
+        IncompleteEdge &icn_edge = uc.incomplete_edge;
+        assert (icn_edge.endpoint &&
+                "IncompleteEdge has to be set with non-null endpoint.");
+
+        cn.add_edge(uc.acn->crr,
+                    *icn_edge.endpoint,
+                    "{data=data, envelope={id=id}}",
+                    icn_edge.category,
+                    icn_edge.type);
+      }
     };
   }
 
   UnresolvedPlace::ResolveFnTy create_collective_resolve_fn_(Place &recv_data, string ae_to_recv_data) {
     // NOTE: resolve for collective waits does not need to be connected as it is placed on right
     //       position because of its place within the code.
-    return [&recv_data, ae_to_recv_data](CommunicationNet &cn, Place &, Transition &t_wait) {
+    return [&recv_data, ae_to_recv_data](CommunicationNet &cn,
+                                         Place &,
+                                         Transition &t_wait,
+                                         UnresolvedConnect &uc) {
       cn.add_output_edge(t_wait, recv_data, ae_to_recv_data);
+
+      if (uc.acn) {
+        IncompleteEdge &icn_edge = uc.incomplete_edge;
+        assert (icn_edge.endpoint &&
+                "IncompleteEdge has to be set with non-null endpoint.");
+
+        cn.add_edge(uc.acn->crr,
+                    *icn_edge.endpoint,
+                    ("take(requests|(_, {id=id}) =>* {envelope={id=id}},\\l"
+                     "     size,\\l"
+                     "     msg_tokens)\\l"),
+                    icn_edge.category,
+                    icn_edge.type);
+      }
     };
   }
 
@@ -234,7 +266,8 @@ struct CN_MPI_Wait final : public PluginCNBase {
   // it is resolved by knowledge of particular (blocking) call.
   CN_MPI_Wait()
     : name_prefix("wait" + get_id()),
-      wait(add_transition({}, name_prefix)) {
+      wait(add_transition({}, name_prefix)),
+      unresolved_transition(nullptr) {
 
     add_cf_edge(entry_place(), wait);
     add_cf_edge(wait, exit_place());
@@ -243,18 +276,25 @@ struct CN_MPI_Wait final : public PluginCNBase {
   CN_MPI_Wait(const CallSite &cs) : CN_MPI_Wait() {
 
     mpi_rqst = cs.getArgument(0);
-    add_unresolved_transition(wait, *mpi_rqst);
+    unresolved_transition = &add_unresolved_transition(wait, *mpi_rqst);
   }
 
   CN_MPI_Wait(const CN_MPI_Wait &) = delete;
   CN_MPI_Wait(CN_MPI_Wait &&) = default;
 
   void connect(AddressableCN &acn) override {
-    add_input_edge(acn.csr /* TODO: choose according to type */, wait, "TODO:", SHUFFLE);
+    if (unresolved_transition) {
+      UnresolvedConnect uc(&acn);
+      IncompleteEdge &edge = uc.incomplete_edge;
+      edge.endpoint = &wait;
+      edge.type = SHUFFLE;
+      unresolved_transition->unresolved_connect = uc;
+    }
   }
 
 private:
   Value const *mpi_rqst;
+  UnresolvedTransition *unresolved_transition;
 };
 
 
@@ -361,21 +401,25 @@ struct CN_MPI_Waitall final : public PluginCNBase {
     add_input_edge(waitall_rqsts, waitall, "take(_, size, requests)");
 
     mpi_rqsts = cs.getArgument(1);
-    add_unresolved_transition(waitall, *mpi_rqsts);
+    unresolved_transition = &add_unresolved_transition(waitall, *mpi_rqsts);
   }
 
   CN_MPI_Waitall(const CN_MPI_Waitall &) = delete;
   CN_MPI_Waitall(CN_MPI_Waitall &&) = default;
 
   void connect(AddressableCN &acn) override {
-    add_input_edge(acn.crr /* TODO: choose according to type */, waitall,
-                   ("take(requests|(_, {id=id}) =>* {envelope={id=id}},\\l"
-                    "     size,\\l"
-                    "     msg_tokens)\\l"), SHUFFLE);
+    if (unresolved_transition) {
+      UnresolvedConnect uc(&acn);
+      IncompleteEdge &edge = uc.incomplete_edge;
+      edge.endpoint = &waitall;
+      edge.type = SHUFFLE;
+      unresolved_transition->unresolved_connect = uc;
+    }
   }
 
 private:
   Value const *mpi_rqsts;
+  UnresolvedTransition *unresolved_transition;
 };
 
 // ===========================================================================

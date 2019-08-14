@@ -168,9 +168,26 @@ struct Transition final : NetElement {
 
 class CommunicationNet;
 
+struct IncompleteEdge final {
+  NetElement *startpoint;
+  NetElement *endpoint;
+  string arc_expr = "";
+  EdgeCategory category = REGULAR;
+  EdgeType type = SINGLE_HEADED;
+};
+
+struct UnresolvedConnect final {
+
+  AddressableCN *acn;
+  IncompleteEdge incomplete_edge;
+
+  UnresolvedConnect() { }
+  UnresolvedConnect(AddressableCN *acn) : acn(acn) { }
+};
+
 struct UnresolvedPlace final {
 
-  using ResolveFnTy = function<void(CommunicationNet &cn, Place &, Transition &)>;
+  using ResolveFnTy = function<void(CommunicationNet &cn, Place &, Transition &, UnresolvedConnect &)>;
 
   UnresolvedPlace(Place &place, const Value &mpi_rqst, ResolveFnTy resolve)
     : place(place),
@@ -198,6 +215,7 @@ struct UnresolvedTransition final {
 
   Transition &transition;
   const Value &mpi_rqst;
+  UnresolvedConnect unresolved_connect;
 };
 
 

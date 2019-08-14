@@ -40,8 +40,7 @@ struct EmptyCN final : public PluginCNBase {
 // ------------------------------------------------------------------------------
 // CN_MPI_Isend
 
-struct CN_MPI_Isend : public PluginCNBase {
-
+struct CN_MPI_SendBase : public PluginCNBase {
   // MPI_Isend(
   //   const void* buf,        // data set to 'send_data' -- this is done within the corresponding annotation
   //   int count,              // information on the input-arc from send_data -- where I can find it?
@@ -58,9 +57,9 @@ struct CN_MPI_Isend : public PluginCNBase {
   Place &send_exit;    // unit exit place
   Transition &send;
 
-  virtual ~CN_MPI_Isend() = default;
+  virtual ~CN_MPI_SendBase() = default;
 
-  CN_MPI_Isend(const CallSite &cs)
+  CN_MPI_SendBase(const CallSite &cs)
     : name_prefix("send" + get_id()),
       send_params(add_place("<empty>", "", name_prefix + "_params")),
       send_reqst(add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_reqst")),
@@ -72,13 +71,15 @@ struct CN_MPI_Isend : public PluginCNBase {
     dest = cs.getArgument(3);
     tag = cs.getArgument(4);
 
-    send_params.type = "(" +
-      compute_data_buffer_type(*datatype) + "," +
-      compute_envelope_type(nullptr, dest, *tag) + ")";
+    auto non_empty_str = [] (const string &str) { return !str.empty(); };
 
-    add_input_edge(send_params, send,
-                   "(" + compute_data_buffer_value(*datatype, *size) + ","
-                       + compute_envelope_value(nullptr, dest, *tag, false) + ")");
+    send_params.type = pp_vector<string>({
+      compute_data_buffer_type(*datatype),
+      compute_envelope_type(nullptr, dest, *tag, ",", "(", ")")}, ",", "(", ")", non_empty_str);
+
+    add_input_edge(send_params, send, pp_vector<string>({
+      compute_data_buffer_value(*datatype, *size),
+      compute_envelope_value(nullptr, dest, *tag, false) }, ",", "(", ")", non_empty_str));
 
     add_output_edge(send, send_reqst,
                     "{" + compute_msg_rqst_value(nullptr, dest, *tag, "buffered") + "}");
@@ -86,23 +87,88 @@ struct CN_MPI_Isend : public PluginCNBase {
     add_cf_edge(send, send_exit);
     add_cf_edge(entry_place(), send_params);
     add_cf_edge(send_exit, exit_place());
-
-    // TODO: solve unresolved places
   }
 
-  CN_MPI_Isend(const CN_MPI_Isend &) = delete;
-  CN_MPI_Isend(CN_MPI_Isend &&) = default;
+  CN_MPI_SendBase(const CN_MPI_SendBase &) = delete;
+  CN_MPI_SendBase(CN_MPI_SendBase &&) = default;
 
   virtual void connect(AddressableCN &acn) {
     add_output_edge(send, acn.asr, "{data=" + compute_data_buffer_value(*datatype, *size)
                     + ", envelope=" + compute_msg_rqst_value(nullptr, dest, *tag, "buffered") + "}");
   }
 
-private:
+protected:
   Value const *size;
   Value const *datatype;
   Value const *dest;
   Value const *tag;
+};
+
+struct CN_MPI_Isend : public CN_MPI_SendBase {
+
+  virtual ~CN_MPI_Isend() = default;
+
+  CN_MPI_Isend(const CallSite &cs) : CN_MPI_SendBase(cs) {
+    errs() << *cs.getInstruction() << "\n";
+    mpi_rqst = cs.getArgument(6);
+    assert(mpi_rqst->getType()->isPointerTy() &&
+           "MPI_Request has to be treated as pointer");
+
+    GetElementPtrInst const *gep = dyn_cast<GetElementPtrInst>(mpi_rqst);
+    if (gep) {
+      mpi_rqst = gep->getPointerOperand();
+      add_unresolved_place(send_reqst, *mpi_rqst, create_collective_resolve_fn_());
+    } else {
+      add_unresolved_place(send_reqst, *mpi_rqst, create_resolve_fn_());
+    }
+  }
+
+  CN_MPI_Isend(const CN_MPI_Isend &) = delete;
+  CN_MPI_Isend(CN_MPI_Isend &&) = default;
+
+private:
+  UnresolvedPlace::ResolveFnTy create_resolve_fn_() {
+    return [] (CommunicationNet &cn,
+               Place &initiated_rqst,
+               Transition &t_wait,
+               UnresolvedConnect &uc) {
+
+      cn.add_input_edge(initiated_rqst, t_wait, "(reqst, {id=id, buffered=buffered})");
+
+      if (uc.acn) {
+        IncompleteEdge &icn_edge = uc.incomplete_edge;
+        assert (icn_edge.endpoint &&
+                "IncompleteEdge has to be set with non-null endpoint.");
+
+        cn.add_edge(uc.acn->csr,
+                    *icn_edge.endpoint,
+                    "[buffered] {id=id}",
+                    icn_edge.category,
+                    icn_edge.type);
+      }
+    };
+  }
+
+  UnresolvedPlace::ResolveFnTy create_collective_resolve_fn_() {
+    return [] (CommunicationNet &cn, Place &, Transition &, UnresolvedConnect &uc) {
+
+      if (uc.acn) {
+        IncompleteEdge &icn_edge = uc.incomplete_edge;
+        assert (icn_edge.endpoint &&
+                "IncompleteEdge has to be set with non-null endpoint.");
+
+        cn.add_edge(uc.acn->csr,
+                    *icn_edge.endpoint,
+                    ("take(requests|(_, {id=id}),\\l"
+                     "     size,\\l"
+                     "     msg_tokens)\\l"),
+                    icn_edge.category,
+                    icn_edge.type);
+      }
+    };
+  }
+
+  Value const *mpi_rqst;
 };
 
 
@@ -185,7 +251,8 @@ struct CN_MPI_Irecv : public CN_MPI_RecvBase {
       mpi_rqst = gep->getPointerOperand();
 
       add_unresolved_place(
-        recv_data, *mpi_rqst,
+        recv_data, // TODO: check whether I use correct place or not?!
+        *mpi_rqst,
         create_collective_resolve_fn_(recv_data, "msg_tokens|{data=data} =>* data"));
     } else {
       add_unresolved_place(
@@ -301,32 +368,34 @@ private:
 // ------------------------------------------------------------------------------
 // CN_MPI_Send
 
-struct CN_MPI_Send final : public PluginCNBase {
+struct CN_MPI_Send final : public CN_MPI_SendBase {
 
   virtual ~CN_MPI_Send() = default;
 
-  CN_MPI_Send(const CallSite &cs) : cn_isend(cs), cn_wait(/* TODO: */), t_wait(cn_wait.wait) {
-    add_input_edge(cn_isend.send_reqst, t_wait, "(reqst, {id=id})");
-    add_cf_edge(entry_place(), cn_isend.entry_place());
-    add_cf_edge(cn_wait.exit_place(), exit_place());
-    add_cf_edge(cn_isend.exit_place(), cn_wait.entry_place());
+  CN_MPI_Send(const CallSite &cs)
+    : CN_MPI_SendBase(cs),
+      cn_wait(),
+      t_wait(cn_wait.wait) {
 
-    takeover(std::move(cn_isend));
+    add_input_edge(send_reqst, t_wait, "(reqst, {id=id})");
+
+    add_cf_edge(exit_place(), cn_wait.entry_place());
+    set_exit(cn_wait.exit_place());
+
     takeover(std::move(cn_wait));
   }
+
   CN_MPI_Send(const CN_MPI_Send &) = delete;
   CN_MPI_Send(CN_MPI_Send &&) = default;
 
 
   void connect(AddressableCN &acn) override {
-    cn_isend.connect(acn);
+    CN_MPI_SendBase::connect(acn);
     add_input_edge(acn.csr, t_wait, "[buffered] {data=data, envelope={id=id}}", SHUFFLE);
   }
 
 private:
-  CN_MPI_Isend cn_isend;
   CN_MPI_Wait cn_wait;
-
   Transition &t_wait;
 };
 
@@ -366,7 +435,6 @@ struct CN_MPI_Recv final : public CN_MPI_RecvBase {
 
 private:
   CN_MPI_Wait cn_wait;
-
   Transition &t_wait;
 };
 

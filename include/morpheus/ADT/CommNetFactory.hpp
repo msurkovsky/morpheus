@@ -177,10 +177,21 @@ struct CN_MPI_Irecv : public CN_MPI_RecvBase {
 
   CN_MPI_Irecv(const CallSite &cs) : CN_MPI_RecvBase(cs) {
     mpi_rqst = cs.getArgument(6);
+    assert(mpi_rqst->getType()->isPointerTy() &&
+           "MPI_Request has to be treated as pointer");
 
-    add_unresolved_place(
-      recv_reqst, *mpi_rqst,
-      create_resolve_fn_(recv_data, compute_data_buffer_value(*datatype, *size)));
+    GetElementPtrInst const *gep = dyn_cast<GetElementPtrInst>(mpi_rqst);
+    if (gep) {
+      mpi_rqst = gep->getPointerOperand();
+
+      add_unresolved_place(
+        recv_data, *mpi_rqst,
+        create_collective_resolve_fn_(recv_data, "msg_tokens|{data=data} =>* data"));
+    } else {
+      add_unresolved_place(
+        recv_reqst, *mpi_rqst,
+        create_resolve_fn_(recv_data, compute_data_buffer_value(*datatype, *size)));
+    }
   }
 
   CN_MPI_Irecv(const CN_MPI_Irecv &) = delete;
@@ -190,6 +201,14 @@ private:
   UnresolvedPlace::ResolveFnTy create_resolve_fn_(Place &recv_data, string ae_to_recv_data) {
     return [&recv_data, ae_to_recv_data](CommunicationNet &cn, Place &initiated_rqst, Transition &t_wait) {
       cn.add_input_edge(initiated_rqst, t_wait, "(reqst, {id=id})");
+      cn.add_output_edge(t_wait, recv_data, ae_to_recv_data);
+    };
+  }
+
+  UnresolvedPlace::ResolveFnTy create_collective_resolve_fn_(Place &recv_data, string ae_to_recv_data) {
+    // NOTE: resolve for collective waits does not need to be connected as it is placed on right
+    //       position because of its place within the code.
+    return [&recv_data, ae_to_recv_data](CommunicationNet &cn, Place &, Transition &t_wait) {
       cn.add_output_edge(t_wait, recv_data, ae_to_recv_data);
     };
   }

@@ -292,7 +292,7 @@ private:
 
 
 // ------------------------------------------------------------------------------
-// CN_MPI_Isend
+// CN_MPI_Recv
 
 struct CN_MPI_Recv final : public CN_MPI_RecvBase {
 

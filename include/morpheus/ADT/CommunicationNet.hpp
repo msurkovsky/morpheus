@@ -609,18 +609,25 @@ public:
     return add_(move(t), transitions_);
   }
 
+  template <typename Startpoint, typename Endpoint>
+  inline Edge& add_edge(Startpoint &start, Endpoint &end, string ae,
+                         EdgeCategory category, EdgeType type) {
+
+    return add_edge_(create_edge_(start, end, ae, category, type));
+  }
+
   Edge& add_input_edge(Place &src, Transition &dest, string ae="",
                        EdgeType type=SINGLE_HEADED) {
-    return add_edge_(src, dest, ae, REGULAR, type);
+    return add_edge(src, dest, ae, REGULAR, type);
   }
 
   Edge& add_output_edge(Transition &src, Place &dest, string ae="") {
-    return add_edge_(src, dest, ae, REGULAR, SINGLE_HEADED);
+    return add_edge(src, dest, ae, REGULAR, SINGLE_HEADED);
   }
 
   template<typename Startpoint, typename Endpoint>
   Edge& add_cf_edge(Startpoint& src, Endpoint& dest) {
-    return add_edge_(src, dest, "", CONTROL_FLOW, SINGLE_HEADED);
+    return add_edge(src, dest, "", CONTROL_FLOW, SINGLE_HEADED);
   }
 
   UnresolvedPlace& add_unresolved_place(Place &place,
@@ -703,13 +710,6 @@ private:
 
   inline Edge& add_edge_(Element<Edge> edge) {
     return add_(move(edge), edge->startpoint.leads_to);
-  }
-
-  template <typename Startpoint, typename Endpoint>
-  inline Edge& add_edge_(Startpoint &start, Endpoint &end, string ae,
-                  EdgeCategory category, EdgeType type) {
-
-    return add_edge_(create_edge_(start, end, ae, category, type));
   }
 
   template <typename T>

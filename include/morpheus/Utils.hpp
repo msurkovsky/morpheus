@@ -22,23 +22,33 @@ template<typename T>
 std::string pp_vector(const std::vector<T> &values,
                       std::string delim=",",
                       std::string lbracket="",
-                      std::string rbracket="") {
+                      std::string rbracket="",
+                      std::function<bool(const T &)>
+                      filter_fn=[] (const T &) { return true; }) {
+
+  std::vector<T const *> values_;
+  for (const T &v : values) {
+    if (filter_fn(v)) {
+      values_.push_back(&v);
+    }
+  }
+
   std::ostringstream oss;
-  if (values.empty()) {
+  if (values_.empty()) {
     return "";
   }
 
-  if (values.size() == 1) {
-    oss << values[0];
+  if (values_.size() == 1) {
+    oss << *values_[0];
     return oss.str();
   }
 
   // more than one value
   oss << lbracket;
-  auto it = values.begin();
-  oss << *it; it++;
-  for (; it != values.end(); it++) {
-    oss << delim << *it;
+  auto it = values_.begin();
+  oss << **it; it++;
+  for (; it != values_.end(); it++) {
+    oss << delim << **it;
   }
   oss << rbracket;
   return oss.str();

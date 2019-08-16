@@ -34,7 +34,6 @@ def generate_mpn(source_file, nproc, output_file):
 
     opt_tool = "opt"
 
-    # TODO: set LD_LIBRARY_PATH for libMorph.so .. assert this
     processes = []
     for p in range(nproc):
         with local.cwd(cwd):

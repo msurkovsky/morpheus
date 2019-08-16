@@ -13,7 +13,6 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/CFG.h"
-#include "llvm/Support/raw_ostream.h"
 
 #include "morpheus/Utils.hpp"
 #include "morpheus/Formats/Formatter.hpp"
@@ -781,8 +780,8 @@ struct AddressableCN final : public CommunicationNet {
       csr(add_place("MessageRequest", "", "CompletedSendRequest")),
       crr(add_place("MessageToken", "", "CompletedReceiveRequest")),
       embedded_cn(CommunicationNet()),
-      entry_p_(&add_place("Unit", "", "ACN" + address + "Entry" + get_id())),
-      exit_p_(&add_place("Unit", "", "ACN" + address + "Exit" + get_id())) {
+      entry_p_(&add_place("Unit", "", "ACN entry" + get_id())),
+      exit_p_(&add_place("Unit", "", "ACN exit" + get_id())) {
 
     asr.compound_label = "ASR";
     arr.compound_label = "ARR";
@@ -1063,16 +1062,7 @@ struct BasicBlockCN final : public PluginCNBase {
 
   ~BasicBlockCN() = default;
 
-  BasicBlockCN(BasicBlock const *bb) : bb(bb) {
-
-    string str;
-    raw_string_ostream rso(str);
-    bb->printAsOperand(rso, false);
-    string bb_name = " " + rso.str();
-
-    entry_place().name += bb_name;
-    exit_place().name += bb_name;
-  }
+  BasicBlockCN(BasicBlock const *bb) : bb(bb) { }
 
   BasicBlockCN(const BasicBlockCN &) = delete;
   BasicBlockCN(BasicBlockCN &&) = default;
@@ -1140,13 +1130,6 @@ struct CFG_CN final : public PluginCNBase {
   ~CFG_CN() = default;
 
   CFG_CN(const Function &fn, LoopInfo &loop_info) : fn(fn), loop_info(loop_info) {
-    string str;
-    raw_string_ostream rso(str);
-    fn.printAsOperand(rso, false);
-    string fn_name = " " + rso.str();
-
-    entry_place().name += fn_name;
-    exit_place().name += fn_name;
 
     // create the basic structure
     auto bfs_it = breadth_first(&fn);

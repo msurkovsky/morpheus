@@ -46,6 +46,7 @@ PreservedAnalyses MPISubstituteRankPass::run (Module &m, ModuleAnalysisManager &
     }
   }
 
-  // pruning code causes that all analyses are invalidated
+  m.addModuleFlag(Module::Warning, "morpheus.pruned_rank", uint32_t(rank_arg));
+
   return PreservedAnalyses::none();
 }

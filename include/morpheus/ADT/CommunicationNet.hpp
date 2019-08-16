@@ -762,7 +762,7 @@ private:
 
 struct AddressableCN final : public CommunicationNet {
 
-  using Address = unsigned int;
+  using Address = string;
 
   const Address address;
   Place &asr;
@@ -781,8 +781,8 @@ struct AddressableCN final : public CommunicationNet {
       csr(add_place("MessageRequest", "", "CompletedSendRequest")),
       crr(add_place("MessageToken", "", "CompletedReceiveRequest")),
       embedded_cn(CommunicationNet()),
-      entry_p_(&add_place("Unit", "", "ACN" + std::to_string(address) + "Entry" + get_id())),
-      exit_p_(&add_place("Unit", "", "ACN" + std::to_string(address) + "Exit" + get_id())) {
+      entry_p_(&add_place("Unit", "", "ACN" + address + "Entry" + get_id())),
+      exit_p_(&add_place("Unit", "", "ACN" + address + "Exit" + get_id())) {
 
     asr.compound_label = "ASR";
     arr.compound_label = "ARR";

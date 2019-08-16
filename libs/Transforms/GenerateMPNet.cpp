@@ -10,8 +10,6 @@
 
 using namespace llvm;
 
-void interconnect_basicblock_cns(std::vector<cn::BasicBlockCN> &);
-
 // -------------------------------------------------------------------------- //
 // GenerateMPNetPass
 
@@ -44,27 +42,43 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
     bbcn.enclose();
   }
 
-  // TODO: take rank/address value from the input code
-  cn::AddressableCN acn(1);
-  std::move(cfg_cn).inject_into(acn);
+  ConstantAsMetadata *rank_md = dyn_cast_or_null<ConstantAsMetadata>(
+    m.getModuleFlag("morpheus.pruned_rank"));
+
+  std::unique_ptr<cn::AddressableCN> acn;
+  if (rank_md == nullptr) {
+    acn = std::make_unique<cn::AddressableCN>("global");
+  } else {
+    ConstantInt *rank_v = dyn_cast<ConstantInt>(rank_md->getValue());
+    auto rank = rank_v->getValue().getLimitedValue();
+    acn = std::make_unique<cn::AddressableCN>("rank=" + std::to_string(rank));
+  }
+
+  std::move(cfg_cn).inject_into(*acn);
   // resolve unresolved elements
-  acn.embedded_cn.resolve_unresolved();
+  acn->embedded_cn.resolve_unresolved();
   // enclose the cn
-  acn.enclose();
+  acn->enclose();
 
-
+  string name = m.getSourceFileName();
+  unsigned slash_pos = name.find_last_of("/");
+  unsigned dot_pos = name.find_last_of(".");
+  unsigned count = dot_pos - slash_pos - 1;
+  if (dot_pos < name.size() && count > 0) {
+    name = name.substr(slash_pos + 1, count);
+  }
   std::ofstream dot;
-  dot.open("acn-" + acn.get_id() + ".dot");
-  dot << acn;
+  dot.open(name + "-" + acn->address + ".dot");
+  dot << *acn;
   dot.close();
 
-  acn.collapse();
+  acn->collapse();
   std::ofstream dot2;
-  dot2.open("acn-" + acn.get_id() + "-collapsed.dot");
-  dot2 << acn;
+  dot2.open(name + "-" + acn->address + "-collapsed.dot");
+  dot2 << *acn;
   dot2.close();
 
-  return PreservedAnalyses::none(); // TODO: check which analyses have been broken?
+  return PreservedAnalyses::none();
 }
 
 

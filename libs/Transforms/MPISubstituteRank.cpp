@@ -1,10 +1,7 @@
-
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/TypeBuilder.h"
 #include "llvm/Support/CommandLine.h"
 
 #include "morpheus/Analysis/MPILabellingAnalysis.hpp"
-#include "morpheus/Analysis/MPIScopeAnalysis.hpp"
 #include "morpheus/Transforms/MPISubstituteRank.hpp"
 
 #include <algorithm>

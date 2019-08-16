@@ -1,5 +1,4 @@
 import os
-import sys
 
 import click
 from plumbum import local
@@ -9,15 +8,9 @@ from plumbum import local
 @click.option("-np", "--nproc", default=1, help="Number of processes.")
 @click.option("-o", "--output-file", default=None, type=str, help="Output file")
 def generate_mpn(source_file, nproc, output_file):
-    assert ("LLVM_ROOT_PATH" in os.environ), "LLVM_ROOT_PATH is not specified."
-
     cwd = os.path.abspath(os.getcwd())
 
-    llvm_root_path = os.path.abspath(os.environ["LLVM_ROOT_PATH"])
-    llvm_bin = os.path.join(llvm_root_path, "build/bin")
-
-    clang_compiler = "{}/clang++".format(llvm_bin)
-    assert os.path.isfile(clang_compiler), "Wrong path to clang compiler."
+    clang_compiler = "clang++"
 
     ll = local[clang_compiler][
         "-S",
@@ -39,7 +32,7 @@ def generate_mpn(source_file, nproc, output_file):
         for path in os.environ["LD_LIBRARY_PATH"].split(os.pathsep)
     ), "Could not find libMorph.so. Check is LD_LIBRARY_PATH is set properly."
 
-    opt_tool = "{}/opt".format(llvm_bin)
+    opt_tool = "opt"
 
     # TODO: set LD_LIBRARY_PATH for libMorph.so .. assert this
     processes = []

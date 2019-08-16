@@ -3,7 +3,4 @@ add_library(MorphADT SHARED
   )
 
 target_include_directories (MorphADT PRIVATE ${MORPHEUS_INCLUDES})
-target_include_directories (MorphADT SYSTEM PRIVATE
-  ${LLVM_INCLUDE_DIRS}
-  ${USED_LLVM_INCLUDES}
-  )
+target_include_directories (MorphADT SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})

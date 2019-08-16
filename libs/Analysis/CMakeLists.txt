@@ -4,7 +4,4 @@ add_library (MPIRelAnalysis SHARED
   )
 
 target_include_directories (MPIRelAnalysis PRIVATE ${MORPHEUS_INCLUDES})
-target_include_directories (MPIRelAnalysis SYSTEM PRIVATE
-  ${LLVM_INCLUDE_DIRS}
-  ${USED_LLVM_INCLUDES}
-  )
+target_include_directories (MPIRelAnalysis SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})

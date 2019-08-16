@@ -1,30 +1,15 @@
 cmake_minimum_required (VERSION 2.8)
 
-set (LLVM_ROOT_PATH $ENV{LLVM_ROOT_PATH})
-if (NOT DEFINED LLVM_ROOT_PATH)
-  message (FATAL_ERROR "Varialbe LLVM_ROOT_PATH is not set.")
-  return ()
-endif ()
-message (STATUS "LLVM_ROOT_PATH: ${LLVM_ROOT_PATH}")
-
-set (USED_LLVM_PATH ${LLVM_ROOT_PATH})
-set (USED_LLVM_INCLUDES "${USED_LLVM_PATH}/sources/include")
-set (CMAKE_CXX_COMPILER "${USED_LLVM_PATH}/build/bin/clang++")
-
 set(PROJECT_NAME "Morpheus")
 project (${PROJECT_NAME})
 
 set(MORPHEUS_INCLUDES "${CMAKE_SOURCE_DIR}/include")
 
-set (LLVM_DIR "${USED_LLVM_PATH}/build/cmake/modules/CMakeFiles")
-find_package (LLVM REQUIRED CONFIG)
-message ("LLVM fount at ${LLVM_DIR}")
+find_package (LLVM 8 REQUIRED CONFIG)
 
 add_definitions (${LLVM_DEFINITIONS})
 
-message("LLVM include dirs: ${LLVM_INCLUDE_DIRS}")
-
-# set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -fPIC -fno-rtti -g -O0 -std=c++17")
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

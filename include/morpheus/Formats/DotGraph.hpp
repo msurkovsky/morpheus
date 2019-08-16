@@ -126,8 +126,6 @@ namespace cn {
 
 
       ostream& format(ostream &os, const CommunicationNet &cn) const {
-        os << "subgraph cluster_CN" << cn.get_id() << "{\n";
-
         auto places = cn.places();
         std::for_each(places.begin(),
                       places.end(),
@@ -137,7 +135,7 @@ namespace cn {
         std::for_each(transitions.begin(),
                       transitions.end(),
                       create_print_fn_<Transition>(os, *this, "\n", 0));
-        os << "}\n";
+
         return os;
       }
 
@@ -148,8 +146,13 @@ namespace cn {
                       places.end(),
                       create_print_fn_<Place>(os, *this, "\n", 0));
 
+        os << "subgraph cluster_CN" << acn.embedded_cn.get_id() << "{\n";
+
         // format the embedded net
         format(os, acn.embedded_cn);
+
+        os << "label=\"Address: " << acn.address << " \";\n";
+        os << "}\n";
 
         // print edges from the embedded CN
         for (auto const &p : acn.embedded_cn.places()) {

@@ -9,9 +9,11 @@ RUN pip3 install plumbum click
 WORKDIR /morpheus
 COPY . .
 
+ENV PATH=/usr/lib/llvm-8/bin:${PATH}
+
 RUN mkdir build && \
     cd build && \
-    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release .. && \
     make -j
 
 ENV LC_ALL=C.UTF-8

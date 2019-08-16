@@ -8,6 +8,8 @@
 #include "morpheus/Formats/DotGraph.hpp"
 #include "morpheus/Transforms/GenerateMPNet.hpp"
 
+#include <iostream>
+
 using namespace llvm;
 
 // -------------------------------------------------------------------------- //
@@ -60,6 +62,8 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
   // enclose the cn
   acn->enclose();
 
+  acn->collapse();
+
   string name = m.getSourceFileName();
   unsigned slash_pos = name.find_last_of("/");
   unsigned dot_pos = name.find_last_of(".");
@@ -67,18 +71,11 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
   if (dot_pos < name.size() && count > 0) {
     name = name.substr(slash_pos + 1, count);
   }
-  std::ofstream dot;
-  dot.open(name + "-" + acn->address + ".dot");
-  dot << *acn;
-  dot.close();
 
-  acn->collapse();
-  std::ofstream dot2;
-  dot2.open(name + "-" + acn->address + "-collapsed.dot");
-  dot2 << *acn;
-  dot2.close();
+  std::cout << name + "-" + acn->address + ".dot" << std::endl;
+  std::cout << *acn;
 
-  return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
 
 

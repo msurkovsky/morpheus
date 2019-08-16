@@ -4,7 +4,7 @@
 
 #include "morpheus/Formats/Formatter.hpp"
 
-#include <fstream>
+#include <ostream>
 
 using namespace std;
 
@@ -182,11 +182,11 @@ namespace cn {
   } // end of formats namespace
 
   template <typename T>
-  ofstream &operator<< (ofstream &fs, const Printable<T> &printable) {
+  ostream &operator<< (ostream &os, const Printable<T> &printable) {
     std::stringstream ss;
     printable.print(ss, formats::DotGraph());
-    fs << ss.str();
-    return fs;
+    os << ss.str();
+    return os;
   }
 } // end of cn namespace
 

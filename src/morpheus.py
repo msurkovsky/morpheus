@@ -1,4 +1,5 @@
 import os
+import io
 
 import click
 from plumbum import local
@@ -6,8 +7,8 @@ from plumbum import local
 @click.command()
 @click.argument("source-file")
 @click.option("-np", "--nproc", default=1, help="Number of processes.")
-@click.option("-o", "--output-file", default=None, type=str, help="Output file")
-def generate_mpn(source_file, nproc, output_file):
+@click.option("-o", "--output-dir", default=None, type=str, help="Output directory")
+def generate_mpn(source_file, nproc, output_dir):
     cwd = os.path.abspath(os.getcwd())
 
     clang_compiler = "clang++"
@@ -56,12 +57,15 @@ def generate_mpn(source_file, nproc, output_file):
                 "-disable-output",
                 "--load-pass-plugin", lib_morph,
                 "-passes", "generate-mpn",
+                "-o", "-"
             ]
 
             cmd = ll | a | b | c
-            print (cmd)
-            cmd()
-
+            output = cmd();
+            buf = io.StringIO(output)
+            fname = buf.readline()
+            with open(os.path.join(output_dir, fname.rstrip()), "w") as file:
+                file.write(buf.read());
 
 if __name__ == "__main__":
     generate_mpn()

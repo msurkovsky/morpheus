@@ -40,7 +40,7 @@ namespace cn {
     template <typename T>
     auto create_print_fn_(std::ostream &os, const Formatter &fmt,
                           std::string delim, size_t pos) {
-      return [&, pos] (const std::unique_ptr<T> &e) {
+      return [&, delim, pos] (const std::unique_ptr<T> &e) {
         os << std::string(pos, ' ');
         fmt.format(os, *e);
         os << delim;
@@ -50,7 +50,7 @@ namespace cn {
     template <typename T, typename UnaryPredicate>
     auto create_print_fn_(std::ostream &os, const Formatter &fmt,
                           UnaryPredicate pred, std::string delim, size_t pos) {
-      return [&, pred, pos] (const std::unique_ptr<T> &e) {
+      return [&, pred, delim, pos] (const std::unique_ptr<T> &e) {
         if (pred(*e)) {
           os << std::string(pos, ' ');
           fmt.format(os, *e);

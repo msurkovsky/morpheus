@@ -44,7 +44,6 @@ Instruction *MPILabelling::get_unique_call(StringRef name) const {
   }
 
   std::vector<CallSite> const &calls = search->second;
-  // TODO: isn't there any support of error messages in llvm infrastructure?
   assert(calls.size() == 1 && "Expect single call.");
 
   return calls[0].getInstruction();

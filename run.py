@@ -13,7 +13,7 @@ from plumbum import local
 @click.option("-o", "--output-dir", default=None, type=str, help="Output directory")
 def run(source_file, nproc, output_dir):
     src_path = os.path.abspath(source_file)
-    src_dir_path = os.path.dirname(source_file)
+    src_dir_path = os.path.abspath(os.path.dirname(source_file))
     src_file_basename = os.path.basename(source_file)
     if output_dir is None:
         output_dir = os.getcwd()

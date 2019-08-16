@@ -2,7 +2,7 @@ import os
 import sys
 
 import click
-from plumbum import local#, BG
+from plumbum import local
 
 @click.command()
 @click.argument("source-file")
@@ -46,7 +46,7 @@ def generate_mpn(source_file, nproc, output_file):
     for p in range(nproc):
         with local.cwd(cwd):
             a = local[opt_tool][
-                "-S",                             # TODO: debug to write as LLVM assembly
+                "-S",
                 "--load", lib_morph,              # use old PM in order to process cli arguments (cl::opt)
                 "--load-pass-plugin", lib_morph,  # use new PM
                 "-passes", "substituterank",      # pass pruneprocess
@@ -60,10 +60,15 @@ def generate_mpn(source_file, nproc, output_file):
                 "-simplifycfg",
                 "-o", "-"
             ]
+            c = local[opt_tool][
+                "-disable-output",
+                "--load-pass-plugin", lib_morph,
+                "-passes", "generate-mpn",
+            ]
 
-            # cmd = (ll | a) & BG(stderr=sys.stderr)# | b
-            cmd = ll | a | b
-            print(cmd())
+            cmd = ll | a | b | c
+            print (cmd)
+            cmd()
 
 
 if __name__ == "__main__":

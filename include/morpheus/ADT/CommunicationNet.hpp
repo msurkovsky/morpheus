@@ -70,7 +70,6 @@ struct Identifiable {
   Identifiable(const Identifiable &) = delete;
   Identifiable(Identifiable &&) = default;
   Identifiable& operator=(const Identifiable &) = delete;
-  Identifiable& operator=(Identifiable &&) = default;
 
   ID get_id() const {
     return id;
@@ -93,7 +92,6 @@ struct NetElement : public Identifiable, public Printable<NetElement> {
   NetElement(const NetElement &) = delete;
   NetElement(NetElement &&) = default;
   NetElement& operator=(const NetElement &) = delete;
-  NetElement& operator=(NetElement &&) = default;
 
   virtual string get_element_type() const = 0;
 
@@ -114,7 +112,6 @@ struct Edge final : public Printable<Edge> {
   Edge(const Edge &) = delete;
   Edge(Edge &&) = default;
   Edge& operator=(const Edge &) = delete;
-  Edge& operator=(Edge &&) = default;
 
   inline EdgeCategory get_category() const   { return category; }
   inline EdgeType     get_type()     const   { return type; }
@@ -144,7 +141,6 @@ struct Place final : NetElement {
   Place(const Place &) = delete;
   Place(Place &&) = default;
   Place& operator=(const Place &) = delete;
-  Place& operator=(Place &&) = default;
 
   string get_element_type() const {
     return "place_t";
@@ -165,7 +161,6 @@ struct Transition final : NetElement {
   Transition(const Transition &) = delete;
   Transition(Transition &&) = default;
   Transition& operator=(const Transition &) = delete;
-  Transition& operator=(Transition &&) = default;
 
   string get_element_type() const {
     return "transition_t";
@@ -213,7 +208,6 @@ struct UnresolvedPlace final {
   UnresolvedPlace(const UnresolvedPlace &) = delete;
   UnresolvedPlace(UnresolvedPlace &&) = default;
   UnresolvedPlace& operator=(const UnresolvedPlace &) = delete;
-  UnresolvedPlace& operator=(UnresolvedPlace &&) = default;
 
   Place &place;
   const Value &mpi_rqst;
@@ -228,7 +222,6 @@ struct UnresolvedTransition final {
   UnresolvedTransition(const UnresolvedTransition &) = delete;
   UnresolvedTransition(UnresolvedTransition &&) = default;
   UnresolvedTransition& operator=(const UnresolvedTransition &) = delete;
-  UnresolvedTransition& operator=(UnresolvedTransition &&) = default;
 
   Transition &transition;
   const Value &mpi_rqst;
@@ -615,8 +608,20 @@ public:
   CommunicationNet(const CommunicationNet &) = delete;
   CommunicationNet(CommunicationNet &&) = default;
   CommunicationNet& operator=(const CommunicationNet &) = delete;
-  CommunicationNet& operator=(CommunicationNet &&) = default;
+  CommunicationNet& operator=(CommunicationNet &&cn) {
+    // store the current this
+    CommunicationNet tmp(move(*this));
+    clear();
 
+    // takeover the elements of given cn
+    takeover(move(cn));
+    cn.clear();
+
+    // fill given cn by stored this
+    cn.takeover(move(tmp));
+
+    return *this;
+  }
 
   virtual void resolve_unresolved();
   virtual void collapse();

@@ -28,6 +28,9 @@
 #include <variant>
 #include <vector>
 
+// NOTE: mark variables that are used only within assert to make build happy
+#define _unused(x) ((void)(x))
+
 using namespace std;
 
 namespace cn {
@@ -338,6 +341,7 @@ protected:
 
         assert (&e1->endpoint == &e2->startpoint
                 && "The path has to be composed of consecutive net elements.");
+        _unused(e2);
 
         // remove the first edge, the second one is needed for the following step
         to_remove.push_back(&e1->endpoint);
@@ -1199,6 +1203,7 @@ private:
     BasicBlockCN& entry_bb = bb_cns.front();
     auto it = predecessors(entry_bb.bb);
     assert(it.begin() == it.end() && "Entry basic block cannot have predecessor!");
+    _unused(it);
     return entry_bb;
   }
 

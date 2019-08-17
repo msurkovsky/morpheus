@@ -39,10 +39,7 @@ AnalysisKey MPIScopeAnalysis::Key;
 // -------------------------------------------------------------------------- //
 // MPIScope
 
-MPIScope::MPIScope(ModuleSummaryIndex &index, MPILabelling &labelling, CallGraph &cg)
-    : index(index),
-      cg(cg),
-      labelling(labelling) {
+MPIScope::MPIScope(ModuleSummaryIndex &index, MPILabelling &labelling, CallGraph &cg) {
 
   Instruction *mpi_init_call = labelling.get_unique_call("MPI_Init");
   Instruction *mpi_fin_call = labelling.get_unique_call("MPI_Finalize");

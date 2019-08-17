@@ -29,10 +29,6 @@ namespace llvm {
   class MPIScope {
     using VisitedNodes = std::unordered_map<CallGraphNode const *, bool>;
 
-    ModuleSummaryIndex &index;
-    CallGraph &cg;
-    MPILabelling &labelling;
-
   public:
     using CallNodeDataT = std::pair<std::optional<Instruction *>, Function *>;
     using CallNode = PPNode<CallNodeDataT>;

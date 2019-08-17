@@ -1,9 +1,10 @@
 # Morpheus
 
+<img align="right" width="35%" src="morpheus-logo.svg?sanitize=true">
+
 Morpheus is an open-source tool for extracting an abstract model of communication from a code MPI (Message Passing Interface) applications. Generated abstract model of communication is called _MP net_ and it is strongly inspired by [Coloured Petri nets](https://en.wikipedia.org/wiki/Coloured_Petri_net). MP net is aims to help people better understand the communication aspect of MPI program. The assumption is, that the structure of communication which has inherently spatial character can be better understood by looking at a kind of graph than by reading the code.
 
 More information about MP nets can be found in [MP net as Abstract Model of Communication for Message-passing Applications](https://arxiv.org/abs/1903.08252).
-
 
 ## Installation
 

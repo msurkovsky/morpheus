@@ -59,7 +59,7 @@ namespace cn {
 
         format(os, static_cast<const NetElement&>(transition));
 
-        os << pp_vector(transition.guard, ", ", "[", "]");
+        os << Utils::pp_vector(transition.guard, ", ", "[", "]");
         return os;
       }
 

@@ -117,7 +117,7 @@ namespace cn {
              << "<td border=\"1\" cellpadding=\"10\" port=\"box\">"; format(os, static_cast<const NetElement &>(transition)); os << "</td>"
             << "</tr>"
             << "<tr>"
-             << "<td>" << pp_vector(transition.guard, ", ", "[", "]") << "</td>"
+             << "<td>" << Utils::pp_vector(transition.guard, ", ", "[", "]") << "</td>"
             << "</tr>"
            << "</table>"
            << ">];";

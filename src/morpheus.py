@@ -8,19 +8,24 @@ from plumbum import local
 @click.argument("source-file")
 @click.option("-np", "--nproc", default=1, help="Number of processes.")
 @click.option("-o", "--output-dir", default=None, type=str, help="Output directory")
-def generate_mpn(source_file, nproc, output_dir):
+@click.option("-I", "--includes", default=None, type=str, multiple=True, help="Add directory to include search path")
+def generate_mpn(source_file, nproc, output_dir, includes):
     cwd = os.path.abspath(os.getcwd())
 
     clang_compiler = "clang++"
 
+    # prepare all includes
+    incls = ["/usr/include/mpi"] + list([] if includes is None else includes[:])
+
+    flatten = lambda l: [item for sublist in l for item in sublist]
     ll = local[clang_compiler][
         "-S",
         "-emit-llvm",                    # TODO: do I have to emit ll code? binary should be as good as ll
         "-g",
         "-O0",
-        "-I", "/usr/include/mpi",        # include MPI
-        "-Xclang","-disable-O0-optnone", # allow to run optimization passes later
-        "-o", "-",                       # redirect output to stdout
+        flatten(("-I", incl) for incl in incls),
+        "-Xclang","-disable-O0-optnone",     # allow to run optimization passes later
+        "-o", "-",                           # redirect output to stdout
         source_file
     ]
 

@@ -109,7 +109,6 @@ struct CN_MPI_Isend : public CN_MPI_SendBase {
   virtual ~CN_MPI_Isend() = default;
 
   CN_MPI_Isend(const CallSite &cs) : CN_MPI_SendBase(cs) {
-    errs() << *cs.getInstruction() << "\n";
     mpi_rqst = cs.getArgument(6);
     assert(mpi_rqst->getType()->isPointerTy() &&
            "MPI_Request has to be treated as pointer");

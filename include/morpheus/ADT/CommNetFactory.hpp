@@ -75,14 +75,15 @@ struct CN_MPI_SendBase : public PluginCNBase {
 
     send_params.type = Utils::pp_vector<string>({
       Utils::compute_data_buffer_type(*datatype),
-      Utils::compute_envelope_type(nullptr, dest, *tag, ",", "(", ")")}, ",", "(", ")", non_empty_str);
+      Utils::compute_envelope_type(nullptr, dest, *tag, ",\\l ", "(", ")")}, ",", "(", ")", non_empty_str);
 
     add_input_edge(send_params, send, Utils::pp_vector<string>({
       Utils::compute_data_buffer_value(*datatype, *size),
       Utils::compute_envelope_value(nullptr, dest, *tag, false) }, ",", "(", ")", non_empty_str));
 
     add_output_edge(send, send_reqst,
-                    "{" + Utils::compute_msg_rqst_value(nullptr, dest, *tag, "buffered") + "}");
+                    "(rqst,\\l " + Utils::compute_msg_rqst_value(
+                        nullptr, dest, *tag, "buffered", "\\l  ", "{", "}") + ")");
 
     add_cf_edge(send, send_exit);
     add_cf_edge(entry_place(), send_params);
@@ -93,8 +94,9 @@ struct CN_MPI_SendBase : public PluginCNBase {
   CN_MPI_SendBase(CN_MPI_SendBase &&) = default;
 
   virtual void connect(AddressableCN &acn) {
-    add_output_edge(send, acn.asr, "{data=" + Utils::compute_data_buffer_value(*datatype, *size)
-                    + ", envelope=" + Utils::compute_msg_rqst_value(nullptr, dest, *tag, "buffered") + "}");
+    add_output_edge(send, acn.asr, ("{data=" + Utils::compute_data_buffer_value(*datatype, *size) + ","
+                                    " envelope={\\l " + Utils::compute_msg_rqst_value(
+                                        nullptr, dest, *tag, "buffered", "\\l ") + "}}"));
   }
 
 protected:
@@ -197,7 +199,8 @@ struct CN_MPI_RecvBase : public PluginCNBase { // common base class for both blo
                    Utils::compute_envelope_value(source, nullptr, *tag, false, ",", "(", ")"));
 
     add_output_edge(recv, recv_reqst,
-                    "{" + Utils::compute_msg_rqst_value(source, nullptr, *tag, "false") + "}");
+                    "(rqst,\\l " + Utils::compute_msg_rqst_value(
+                        source, nullptr, *tag, "false", "\\l  ", "{", "}") + ")");
 
     add_cf_edge(recv, recv_exit);
     add_cf_edge(entry_place(), recv_params);
@@ -208,7 +211,7 @@ struct CN_MPI_RecvBase : public PluginCNBase { // common base class for both blo
   CN_MPI_RecvBase(CN_MPI_RecvBase &&) = default;
 
   virtual void connect(AddressableCN &acn) {
-    add_output_edge(recv, acn.arr, Utils::compute_msg_rqst_value(source, nullptr, *tag, "false"));
+    add_output_edge(recv, acn.arr, Utils::compute_msg_rqst_value(source, nullptr, *tag, "false", "\\l ","{", "}"));
   }
 
 protected:
@@ -451,7 +454,9 @@ struct CN_MPI_Waitall final : public PluginCNBase {
     add_cf_edge(entry_place(), waitall);
     add_cf_edge(waitall, exit_place());
     add_input_edge(waitall_count, waitall, "size");
-    add_input_edge(waitall_rqsts, waitall, "take(_, size, requests)");
+    add_input_edge(waitall_rqsts, waitall, ("take(_,\\l"
+                                            "     size,\\l"
+                                            "     requests)\\l"));
 
     mpi_rqsts = cs.getArgument(1);
     GetElementPtrInst const *gep = dyn_cast<GetElementPtrInst>(mpi_rqsts);

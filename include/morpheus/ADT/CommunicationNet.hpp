@@ -104,7 +104,7 @@ struct NetElement : public Identifiable, public Printable<NetElement> {
 };
 
 
-struct Edge final : public Printable<Edge> {
+struct Edge final : public Identifiable, public Printable<Edge> {
 
   explicit Edge(NetElement &startpoint, NetElement &endpoint, string arc_expr,
                 EdgeCategory category, EdgeType type)
@@ -113,6 +113,21 @@ struct Edge final : public Printable<Edge> {
   Edge(const Edge &) = delete;
   Edge(Edge &&) = default;
   Edge& operator=(const Edge &) = delete;
+
+  bool operator==(const Edge &e) const {
+    return &startpoint == &e.startpoint &&
+           &endpoint == &e.endpoint &&
+           arc_expr == e.arc_expr &&
+           category == e.get_category() &&
+           type == e.get_type();
+  }
+
+  bool operator<(const Edge &e) const {
+    if (*this == e) {
+      return false;
+    }
+    return get_id() < e.get_id();
+  }
 
   inline EdgeCategory get_category() const   { return category; }
   inline EdgeType     get_type()     const   { return type; }
@@ -495,6 +510,49 @@ protected:
     }
   }
 
+  vector<Edge const *> collect_all_edges() const {
+    vector<Edge const *> all_edges;
+    for (const Element<Place> &p : places_) {
+      for (const Element<Edge> &e : p->leads_to) {
+        all_edges.push_back(e.get());
+      }
+    }
+
+    for (const Element<Transition> &t : transitions_) {
+      for (const Element<Edge> &e : t->leads_to) {
+        all_edges.push_back(e.get());
+      }
+    }
+    return all_edges;
+  }
+
+  void reduce_redundant_edges(vector<Edge const *> edges) {
+    // NOTE: Preserve only one edge between the same elements
+    //       if there are more with the same setting.
+
+    vector<Edge const *> unique_edges(edges);
+    std::sort(
+      unique_edges.begin(), unique_edges.end(),
+      [](Edge const *e1, Edge const *e2) {
+        return *e1 < *e2;
+      });
+
+    auto last = std::unique(
+      unique_edges.begin(), unique_edges.end(),
+      [] (Edge const *e1, Edge const *e2) {
+        return *e1 == *e2;
+      });
+    unique_edges.erase(last, unique_edges.end());
+
+    // remove non-unique edges
+    for (const Edge *e : edges) {
+      auto found = find(unique_edges.begin(), unique_edges.end(), e);
+      if (found == unique_edges.end()) {
+        remove_edge(*e);
+      }
+    }
+  }
+
   bool is_collapsible(const Edge &e) const {
     EdgePredicate<CONTROL_FLOW> is_cf;
 
@@ -808,6 +866,9 @@ struct AddressableCN final : public CommunicationNet {
   }
 
   void collapse () override {
+    // NOTE: elements of addressable CN and embedded one are independent,
+    //       therefore the reduction of redundant edges is called separately.
+    reduce_redundant_edges(collect_all_edges());
     embedded_cn.collapse();
   }
 

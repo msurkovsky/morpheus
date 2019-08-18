@@ -123,6 +123,8 @@ namespace cn {
     std::swap(tmp_cn, *this);
 
     reduce_parallel_paths();
+
+    reduce_redundant_edges(collect_all_edges());
   }
 
   void CommunicationNet::takeover(CommunicationNet cn) {

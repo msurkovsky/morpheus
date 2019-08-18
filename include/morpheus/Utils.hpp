@@ -49,7 +49,9 @@ std::string compute_msg_rqst_value(llvm::Value const *src,
                                    llvm::Value const *dest,
                                    const llvm::Value &tag,
                                    std::string buffered,
-                                   std::string delim="");
+                                   std::string delim="",
+                                   std::string lbracket="",
+                                   std::string rbracket="");
 
 }
 

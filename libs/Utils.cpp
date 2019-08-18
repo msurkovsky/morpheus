@@ -144,7 +144,9 @@ std::string compute_msg_rqst_value(llvm::Value const *src,
                                    llvm::Value const *dest,
                                    const llvm::Value &tag,
                                    std::string buffered,
-                                   std::string delim) {
+                                   std::string delim,
+                                   std::string lbracket,
+                                   std::string rbracket) {
 
   auto prepare_part = [] (std::string name,
                           const std::string &val) -> std::string {
@@ -171,7 +173,7 @@ std::string compute_msg_rqst_value(llvm::Value const *src,
   }
   store_non_empty(parts, prepare_part("tag", value_to_str(tag, "tag")));
   store_non_empty(parts, prepare_part("buffered", buffered));
-  return pp_vector(parts, "," + delim, "{", "}");
+  return pp_vector(parts, "," + delim, lbracket, rbracket);
 }
 
 }

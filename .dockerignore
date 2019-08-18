@@ -1,5 +1,5 @@
 
-build/*/*
-examples/*/*
+build/
+examples/
 build-docker-container.sh
 morpheus-docker-run.py

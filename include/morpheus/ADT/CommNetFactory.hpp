@@ -435,6 +435,11 @@ struct CN_MPI_Waitall final : public PluginCNBase {
     add_input_edge(waitall_rqsts, waitall, "take(_, size, requests)");
 
     mpi_rqsts = cs.getArgument(1);
+    GetElementPtrInst const *gep = dyn_cast<GetElementPtrInst>(mpi_rqsts);
+    if (gep) {
+      mpi_rqsts = gep->getPointerOperand();
+    }
+
     unresolved_transition = &add_unresolved_transition(waitall, *mpi_rqsts);
   }
 

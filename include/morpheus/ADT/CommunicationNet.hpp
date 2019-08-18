@@ -530,13 +530,13 @@ protected:
     // NOTE: Preserve only one edge between the same elements
     //       if there are more with the same setting.
 
-    vector<Edge const *> unique_edges(edges);
     std::sort(
-      unique_edges.begin(), unique_edges.end(),
+      edges.begin(), edges.end(),
       [](Edge const *e1, Edge const *e2) {
         return *e1 < *e2;
       });
 
+    vector<Edge const *> unique_edges(edges);
     auto last = std::unique(
       unique_edges.begin(), unique_edges.end(),
       [] (Edge const *e1, Edge const *e2) {
@@ -545,10 +545,13 @@ protected:
     unique_edges.erase(last, unique_edges.end());
 
     // remove non-unique edges
+    auto last_found = unique_edges.begin();
     for (const Edge *e : edges) {
-      auto found = find(unique_edges.begin(), unique_edges.end(), e);
+      auto found = find(last_found, unique_edges.end(), e);
       if (found == unique_edges.end()) {
         remove_edge(*e);
+      } else {
+        last_found = found;
       }
     }
   }

@@ -75,6 +75,11 @@ namespace cn {
       ostream& format(ostream &os, const Place &place) const {
         string id = place.get_id();
 
+        string bgcolor = "";
+        if (place.highlight_color != "none") {
+          bgcolor = "bgcolor=\"" + place.highlight_color + "\"";
+        }
+
         string cpl_row = "<tr><td></td><td></td><td></td></tr>";
         if (!place.compound_label.empty()) {
           cpl_row = (
@@ -95,7 +100,7 @@ namespace cn {
             << "</tr>"
 
             << "<tr>"
-             << "<td port=\"box\" border=\"1\" cellpadding=\"10\" rowspan=\"2\" colspan=\"3\" style=\"rounded\">"; format(os, static_cast<const NetElement&>(place)); os << "</td>"
+             << "<td port=\"box\" border=\"1\" " << bgcolor << " cellpadding=\"10\" rowspan=\"2\" colspan=\"3\" style=\"rounded\">"; format(os, static_cast<const NetElement&>(place)); os << "</td>"
             << "</tr>"
 
             << "<tr>"
@@ -110,11 +115,15 @@ namespace cn {
       }
 
       ostream& format(ostream &os, const Transition &transition) const {
+        string bgcolor = "";
+        if (transition.highlight_color != "none") {
+          bgcolor = "bgcolor=\"" + transition.highlight_color + "\"";
+        }
         os << transition.get_id()
            << " [shape=plain label=<"
            << "<table border=\"0\">"
             << "<tr>"
-             << "<td border=\"1\" cellpadding=\"10\" port=\"box\">"; format(os, static_cast<const NetElement &>(transition)); os << "</td>"
+            << "<td border=\"1\"" << bgcolor << " cellpadding=\"10\" port=\"box\">"; format(os, static_cast<const NetElement &>(transition)); os << "</td>"
             << "</tr>"
             << "<tr>"
              << "<td>" << Utils::pp_vector(transition.guard, ", ", "[", "]") << "</td>"

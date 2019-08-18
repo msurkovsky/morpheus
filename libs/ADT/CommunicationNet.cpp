@@ -51,6 +51,7 @@ namespace cn {
     std::vector<UnresolvedPlace *> to_remove;
 
     // match unresolved places with unresolved transitions
+    vector<UnresolvedTransition *> used;
     for (auto up_it = unresolved_places_.begin();
          up_it != unresolved_places_.end();
          up_it++) {
@@ -62,8 +63,35 @@ namespace cn {
       if (matched_ut_it != unresolved_transitions_.end()) {
         auto &ut = *matched_ut_it;
         up->resolve(*this, up->place, ut->transition, ut->unresolved_connect);
-        unresolved_transitions_.erase(matched_ut_it);
+        used.push_back(ut.get());
         to_remove.push_back(up.get());
+      }
+    }
+
+    // check and eventually mark unresolved transitions
+    std::sort(used.begin(), used.end());
+    auto last = std::unique(used.begin(), used.end());
+    size_t num_of_used = std::distance(used.begin(), last);
+
+    if (num_of_used == unresolved_transitions_.size()) {
+      // all unresolved transition has matched at least once
+      unresolved_transitions_.clear();
+    } else {
+      used.erase(last, used.end());
+      // find and remove the used ones
+      auto end_of_unsed = unresolved_transitions_.end();
+      while (!used.empty()) {
+        UnresolvedTransition *ut_used = used.back();
+        used.pop_back();
+
+        end_of_unsed = std::remove_if(unresolved_transitions_.begin(), end_of_unsed,
+                                      [ut_used](const auto &ut) { return ut.get() == ut_used; });
+      }
+      unresolved_transitions_.erase(unresolved_transitions_.begin(), end_of_unsed);
+
+      // expose unused unresolved transitions
+      for (auto &ut : unresolved_transitions_) {
+        ut->transition.highlight_color = "#ff0000";
       }
     }
 
@@ -76,6 +104,11 @@ namespace cn {
                                       [up_rm](const auto &up) { return up.get() == up_rm; });
     }
     unresolved_places_.erase(remove_from_it, unresolved_places_.end());
+
+    // check and eventually mark unresolved places
+    for (auto &up : unresolved_places_) {
+      up->place.highlight_color = "#ff0000";
+    }
   }
 
   void CommunicationNet::collapse() {

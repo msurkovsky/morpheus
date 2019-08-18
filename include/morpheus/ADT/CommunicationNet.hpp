@@ -88,7 +88,7 @@ struct NetElement : public Identifiable, public Printable<NetElement> {
 
   virtual ~NetElement() = default;
 
-  NetElement(string name) : name(name) { }
+  NetElement(string name) : name(name), highlight_color("none") { }
   NetElement(const NetElement &) = delete;
   NetElement(NetElement &&) = default;
   NetElement& operator=(const NetElement &) = delete;
@@ -96,6 +96,7 @@ struct NetElement : public Identifiable, public Printable<NetElement> {
   virtual string get_element_type() const = 0;
 
   string name;
+  string highlight_color;
   vector<unique_ptr<Edge>> leads_to;
 
   // NOTE: non-owning pointers to edges that points to the element

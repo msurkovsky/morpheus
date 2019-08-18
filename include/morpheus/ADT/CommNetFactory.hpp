@@ -231,11 +231,31 @@ struct CN_MPI_Irecv : public CN_MPI_RecvBase {
     GetElementPtrInst const *gep = dyn_cast<GetElementPtrInst>(mpi_rqst);
     if (gep) {
       mpi_rqst = gep->getPointerOperand();
+      std::unique_ptr<unsigned> idx;
+
+      if (gep->getNumIndices() == 2) {
+        auto idx_it = gep->indices().begin();
+        ConstantInt *i = dyn_cast<ConstantInt>(*idx_it);
+        assert (i->getValue().getLimitedValue() == 0 &&
+                "Limitation: can process only request stored within a vector\n");
+
+        std::advance(idx_it, 1);
+        // get the actual index into the array
+        i = dyn_cast<ConstantInt>(*idx_it);
+        idx = std::make_unique<unsigned>(i->getValue().getLimitedValue());
+      }
+
+      string arc_expr;
+      if (idx) {
+        arc_expr = "msg_tokens[" + std::to_string(*idx) + "]|{data=data} => data";
+      } else {
+        arc_expr = "msg_tokens|{data=data} =>* data";
+      }
 
       add_unresolved_place(
-        recv_data, // TODO: check whether I use correct place or not?!
+        recv_data,
         *mpi_rqst,
-        create_collective_resolve_fn_(recv_data, "msg_tokens|{data=data} =>* data"));
+        create_collective_resolve_fn_(recv_data, arc_expr));
     } else {
       add_unresolved_place(
         recv_reqst, *mpi_rqst,

@@ -35,10 +35,12 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
     MPILabelling::MPICheckpoints checkpoints = mpi_labelling.get_mpi_checkpoints(bbcn.bb);
     while (!checkpoints.empty()) {
       auto checkpoint = checkpoints.front();
-      if (checkpoint.second == MPICallType::DIRECT) { // TODO: first solve direct calls
+      if (checkpoint.second == MPICallType::DIRECT) {
         bbcn.add_pcn(cn::createCommSubnet(checkpoint.first));
-        checkpoints.pop();
+      } else {
+        // TODO: implement reaction on other types of checkpoints
       }
+      checkpoints.pop();
     }
     // enclose the basic block cn
     bbcn.enclose();

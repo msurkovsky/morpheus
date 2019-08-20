@@ -84,4 +84,5 @@ int main (int argc, char *argv[]) {
 
 
 ## Limitations
-TODO:
+
+* MPI communication is within single function.

@@ -137,7 +137,7 @@ private:
       cn.add_input_edge(initiated_rqst, t_wait, "(reqst, {id=id, buffered=buffered})");
 
       uc.close_connect(cn, &AddressableCN::get_completed_send_request,
-                       "[buffered] {id=id}");
+                       "[not(buffered)] {id=id}");
     };
   }
 
@@ -379,7 +379,7 @@ struct CN_MPI_Send final : public CN_MPI_SendBase {
 
   void connect(AddressableCN &acn) override {
     CN_MPI_SendBase::connect(acn);
-    add_input_edge(acn.csr, t_wait, "[buffered] {data=data, envelope={id=id}}", SHUFFLE);
+    add_input_edge(acn.csr, t_wait, "[not(buffered)] {data=data, envelope={id=id}}", SHUFFLE);
   }
 
 private:

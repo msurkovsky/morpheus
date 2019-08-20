@@ -129,7 +129,7 @@ std::string compute_envelope_value(llvm::Value const *src,
 
 std::string compute_data_buffer_type(const llvm::Value &) {
 
-  return "DataPacket"; // NOTE: it may possibly returns a record type:
+  return "DataToken"; // NOTE: it may possibly returns a record type:
                        //       {"type": T, "size": int}
 }
 

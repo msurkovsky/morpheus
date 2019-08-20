@@ -20,32 +20,6 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
   am.registerPass([] { return MPILabellingAnalysis(); });
   am.registerPass([] { return MPIScopeAnalysis(); });
 
-  MPIScope &mpi_scope = am.getResult<MPIScopeAnalysis>(m);
-  MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
-
-  Function *scope_fn = mpi_scope.getFunction();
-  LoopInfo &loop_info = *mpi_scope.getLoopInfo();
-
-  // create the CN representing scope function and following the CFG structure
-  cn::CFG_CN cfg_cn(*scope_fn, loop_info);
-
-  // for each basic block in CFG_CN add a pcn if possible
-  for (cn::BasicBlockCN &bbcn : cfg_cn.bb_cns) {
-    // plug-in nets for all MPI calls
-    MPILabelling::MPICheckpoints checkpoints = mpi_labelling.get_mpi_checkpoints(bbcn.bb);
-    while (!checkpoints.empty()) {
-      auto checkpoint = checkpoints.front();
-      if (checkpoint.second == MPICallType::DIRECT) {
-        bbcn.add_pcn(cn::createCommSubnet(checkpoint.first));
-      } else {
-        // TODO: implement reaction on other types of checkpoints
-      }
-      checkpoints.pop();
-    }
-    // enclose the basic block cn
-    bbcn.enclose();
-  }
-
   ConstantAsMetadata *rank_md = dyn_cast_or_null<ConstantAsMetadata>(
     m.getModuleFlag("morpheus.pruned_rank"));
 
@@ -58,13 +32,47 @@ PreservedAnalyses GenerateMPNetPass::run (Module &m, ModuleAnalysisManager &am) 
     acn = std::make_unique<cn::AddressableCN>("rank=" + std::to_string(rank));
   }
 
-  std::move(cfg_cn).inject_into(*acn);
-  // resolve unresolved elements
-  acn->embedded_cn.resolve_unresolved();
-  // enclose the cn
-  acn->enclose();
+  MPIScope &mpi_scope = am.getResult<MPIScopeAnalysis>(m);
 
-  acn->collapse();
+  if (!mpi_scope.isValid()) {
+    acn->clear();
+    cn::Place &p = acn->add_place("", "", "No MPI scope!");
+    p.highlight_color = "#aacccc";
+  } else {
+    MPILabelling &mpi_labelling = am.getResult<MPILabellingAnalysis>(m);
+
+    Function *scope_fn = mpi_scope.getFunction();
+    LoopInfo &loop_info = *mpi_scope.getLoopInfo();
+
+    // create the CN representing scope function and following the CFG structure
+    cn::CFG_CN cfg_cn(*scope_fn, loop_info);
+
+    // for each basic block in CFG_CN add a pcn if possible
+    for (cn::BasicBlockCN &bbcn : cfg_cn.bb_cns) {
+      // plug-in nets for all MPI calls
+      MPILabelling::MPICheckpoints checkpoints = mpi_labelling.get_mpi_checkpoints(bbcn.bb);
+      while (!checkpoints.empty()) {
+        auto checkpoint = checkpoints.front();
+        if (checkpoint.second == MPICallType::DIRECT) {
+          bbcn.add_pcn(cn::createCommSubnet(checkpoint.first));
+        } else {
+          // TODO: implement reaction on other types of checkpoints
+        }
+        checkpoints.pop();
+      }
+      // enclose the basic block cn
+      bbcn.enclose();
+    }
+
+    std::move(cfg_cn).inject_into(*acn);
+
+    // resolve unresolved elements
+    acn->embedded_cn.resolve_unresolved();
+    // enclose the cn
+    acn->enclose();
+
+    acn->collapse();
+  }
 
   string name = m.getSourceFileName();
   unsigned slash_pos = name.find_last_of("/");

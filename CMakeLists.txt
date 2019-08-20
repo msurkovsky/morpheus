@@ -21,6 +21,3 @@ set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/libs-bin)
 add_subdirectory (include/morpheus)
 
 add_subdirectory (libs)
-# add_subdirectory (src)
-
-# target_link_libraries (${PROJECT_NAME}TagRankPass)

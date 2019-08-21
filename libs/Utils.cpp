@@ -72,10 +72,6 @@ std::string value_to_str(const llvm::Value &v, std::string name, bool return_con
     }
     return "";
   }
-  // string value;
-  // raw_string_ostream rso(value);
-  // v.printAsOperand(rso, false); // print used operand
-  // return rso.str();
   return name;
 }
 
@@ -115,7 +111,11 @@ std::string compute_envelope_value(llvm::Value const *src,
 
   std::vector<std::string> var_names;
   if (src) {
-    store_non_empty(var_names, value_to_str(*src, "src", include_constant));
+    std::string src_ = value_to_str(*src, "src", include_constant);
+    if (src_ == "-2") { // MPI_ANY_SOURCE
+      src_ = "";
+    }
+    store_non_empty(var_names, src_);
   }
 
   if (dest) {
@@ -165,13 +165,22 @@ std::string compute_msg_rqst_value(llvm::Value const *src,
   std::vector<std::string> parts;
   parts.push_back("id=unique(id)");
   if (src) {
-    store_non_empty(parts, prepare_part("src", value_to_str(*src, "src")));
+    std::string src_ = value_to_str(*src, "src");
+    if (src_ == "-2") { // MPI_ANY_SOURCE
+      src_ = "";
+    }
+    store_non_empty(parts, prepare_part("src", src_));
   }
 
   if (dest) {
     store_non_empty(parts, prepare_part("dest", value_to_str(*dest, "dest")));
   }
-  store_non_empty(parts, prepare_part("tag", value_to_str(tag, "tag")));
+
+  std::string tag_ = value_to_str(tag, "tag");
+  if (tag_ == "-1") { // MPI_ANY_TAG
+    tag_ = "";
+  }
+  store_non_empty(parts, prepare_part("tag", tag_));
   store_non_empty(parts, prepare_part("buffered", buffered));
   return pp_vector(parts, "," + delim, lbracket, rbracket);
 }

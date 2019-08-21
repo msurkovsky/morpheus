@@ -123,7 +123,7 @@ namespace cn {
            << " [shape=plain label=<"
            << "<table border=\"0\">"
             << "<tr>"
-            << "<td border=\"1\"" << bgcolor << " cellpadding=\"10\" port=\"box\">"; format(os, static_cast<const NetElement &>(transition)); os << "</td>"
+            << "<td border=\"1\" " << bgcolor << " cellpadding=\"10\" port=\"box\">"; format(os, static_cast<const NetElement &>(transition)); os << "</td>"
             << "</tr>"
             << "<tr>"
              << "<td>" << Utils::pp_vector(transition.guard, ", ", "[", "]") << "</td>"

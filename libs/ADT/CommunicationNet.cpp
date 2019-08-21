@@ -79,15 +79,15 @@ namespace cn {
     } else {
       used.erase(last, used.end());
       // find and remove the used ones
-      auto end_of_unsed = unresolved_transitions_.end();
+      auto end_of_resolved = unresolved_transitions_.end();
       while (!used.empty()) {
         UnresolvedTransition *ut_used = used.back();
         used.pop_back();
 
-        end_of_unsed = std::remove_if(unresolved_transitions_.begin(), end_of_unsed,
-                                      [ut_used](const auto &ut) { return ut.get() == ut_used; });
+        end_of_resolved = std::remove_if(unresolved_transitions_.begin(), end_of_resolved,
+                                         [ut_used](const auto &ut) { return ut.get() == ut_used; });
       }
-      unresolved_transitions_.erase(unresolved_transitions_.begin(), end_of_unsed);
+      unresolved_transitions_.erase(end_of_resolved, unresolved_transitions_.end());
 
       // expose unused unresolved transitions
       for (auto &ut : unresolved_transitions_) {

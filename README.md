@@ -83,6 +83,7 @@ int main (int argc, char *argv[]) {
 ![all-send-one v1: rank 1](examples/all-send-one/aso-v1-rank=1.svg)
 
 
-## Limitations
+## Limitations and known issues
 
 * MPI communication is within single function.
+* ``Recycled'' `MPI_Request` variables. When a request variable is used more than once it cause the crash of analysis. The matching process does not work correctly.

@@ -2,7 +2,7 @@ FROM ubuntu:bionic
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   llvm-8 llvm-8-tools llvm-8-dev clang-8 build-essential cmake libmpich-dev \
-  python3 python3-pip python3-setuptools python3-wheel
+  python3 python3-pip python3-setuptools python3-wheel vim
 
 RUN pip3 install plumbum click
 

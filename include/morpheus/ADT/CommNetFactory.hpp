@@ -365,7 +365,9 @@ struct CN_MPI_Send final : public CN_MPI_SendBase {
       cn_wait(),
       t_wait(cn_wait.wait) {
 
-    add_input_edge(send_reqst, t_wait, "(reqst, {id=id})");
+    add_input_edge(send_reqst, t_wait, ("(reqst, {\\l"
+                                        " id=id,\\l"
+                                        " buffered=buffered})"));
 
     add_cf_edge(exit_place(), cn_wait.entry_place());
     set_exit(cn_wait.exit_place());
@@ -379,7 +381,7 @@ struct CN_MPI_Send final : public CN_MPI_SendBase {
 
   void connect(AddressableCN &acn) override {
     CN_MPI_SendBase::connect(acn);
-    add_input_edge(acn.csr, t_wait, "[not(buffered)] {data=data, envelope={id=id}}", SHUFFLE);
+    add_input_edge(acn.csr, t_wait, "[not(buffered)] {id=id}", SHUFFLE);
   }
 
 private:

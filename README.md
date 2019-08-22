@@ -87,3 +87,4 @@ int main (int argc, char *argv[]) {
 
 * MPI communication is within single function.
 * ``Recycled'' `MPI_Request` variables. When a request variable is used more than once it cause the crash of analysis. The matching process does not work correctly.
+* object with non-trivial destructor complicates the CFG structure and introduce more edges skipping to the exit place.

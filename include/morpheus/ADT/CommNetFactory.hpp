@@ -453,7 +453,7 @@ struct CN_MPI_Waitall final : public PluginCNBase {
       waitall(add_transition({}, name_prefix)) {
 
     // connect entry and exit points
-    add_cf_edge(entry_place(), waitall);
+    add_cf_edge(entry_place(), waitall_rqsts);
     add_cf_edge(waitall, exit_place());
     add_input_edge(waitall_count, waitall, "size");
     add_input_edge(waitall_rqsts, waitall, ("take(_,\\l"

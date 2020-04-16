@@ -487,6 +487,74 @@ private:
   UnresolvedTransition *unresolved_transition;
 };
 
+
+// -----------------------------------------------------------------------------
+// CN_MPI_Waitsome
+
+struct CN_MPI_Waitsome final : public PluginCNBase {
+
+  // MPI_Waitsome (
+  //   int incount,                      // IN (NOTE: note used in MP net, it is not necessary)
+                                         //   'incount' int the specification determines the size
+                                         //    of the input array
+                                         //    QUESTION: do I need it here? Maybe yes! But can I specify
+                                         //    `size` in case of shuffle-headed arcs?
+                                         //     -> Yes take out-of-order only a prefix.
+  //   MPI_Request array_of_requests[],  // INOUT
+  //   int *outcount,                    // OUT
+  //   int array_of_indices[],           // OUT
+  //   MPI_Status array_of_statuses()    // OUT
+  // )
+
+  std::string name_prefix;
+  Place &waitsome_rqsts;
+  Place &waitsome_outcount;
+  Place &waitsome_indicies;
+  // TODO: place with statuses
+  Transition &waitsome;
+
+  CN_MPI_Waitsome(const CallSite &cs)
+    : name_prefix("waitsome" + get_id()),
+      waitsome_rqsts(add_place("(MPI_Request, MessageRequest)", "", name_prefix + "_rqsts")),
+      waitsome_outcount(add_place("Int", "", name_prefix + "_count")),
+      waitsome_indicies(add_place("Int", "", name_prefix + "_indices")),
+      waitsome(add_transition({ "size &gt; 0" }, name_prefix)) {
+
+    // connect entry and exit points
+    add_cf_edge(entry_place(), waitsome_rqsts);
+    add_cf_edge(waitsome, exit_place());
+    add_input_edge(waitsome_rqsts, waitsome, "take(_, _, requests)");
+
+    add_output_edge(waitsome, waitsome_indicies, "indices");
+    add_output_edge(waitsome, waitsome_outcount, "size");
+
+    mpi_rqsts = cs.getArgument(1);
+    GetElementPtrInst const *gep = dyn_cast<GetElementPtrInst>(mpi_rqsts);
+    if (gep) {
+      mpi_rqsts = gep->getPointerOperand();
+    }
+
+    unresolved_transition = &add_unresolved_transition(waitsome, *mpi_rqsts);
+  }
+
+  CN_MPI_Waitsome(const CN_MPI_Waitsome &) = delete;
+  CN_MPI_Waitsome(CN_MPI_Waitsome &&) = default;
+
+  void connect(AddressableCN &acn) override {
+    if (unresolved_transition) {
+      UnresolvedConnect uc(&acn);
+      IncompleteEdge &edge = uc.incomplete_edge;
+      edge.endpoint = &waitsome;
+      edge.type = SHUFFLE;
+      unresolved_transition->unresolved_connect = uc;
+    }
+  }
+
+private:
+  Value const *mpi_rqsts;
+  UnresolvedTransition *unresolved_transition;
+};
+
 // ===========================================================================
 // CNs factory
 
@@ -507,6 +575,8 @@ PluginCNGeneric createCommSubnet(const CallSite &cs) {
     return CN_MPI_Wait(cs);
   } else if (call_name == "MPI_Waitall") {
     return CN_MPI_Waitall(cs);
+  } else if (call_name == "MPI_Waitsome") {
+    return CN_MPI_Waitsome(cs);
   }
   return EmptyCN(cs);
 }
